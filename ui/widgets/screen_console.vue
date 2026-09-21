@@ -167,6 +167,39 @@ class Term {
     });
     this.fit = new FitAddon();
 
+    this.term.attachCustomKeyEventHandler((ev) => {
+      if (this.closed || ev.type !== "keydown") {
+        return true;
+      }
+      // Ctrl+V (and Ctrl+Shift+V) would otherwise be translated into ^V and
+      // the keydown event cancelled, which kills the browser's native paste.
+      // Returning false leaves the event alone so the paste event fires.
+      if (
+        ev.ctrlKey &&
+        !ev.altKey &&
+        !ev.metaKey &&
+        (ev.key === "v" || ev.key === "V")
+      ) {
+        return false;
+      }
+      // xterm.js sends a plain CR for Shift+Enter, making it indistinguishable
+      // from Enter. Send ESC CR (same as Alt+Enter) instead, which is what
+      // applications such as Claude Code expect for "insert a new line".
+      if (
+        ev.key === "Enter" &&
+        ev.shiftKey &&
+        !this.control.echo() &&
+        !ev.ctrlKey &&
+        !ev.altKey &&
+        !ev.metaKey
+      ) {
+        ev.preventDefault();
+        this.control.send("\x1b\r");
+        return false;
+      }
+      return true;
+    });
+
     this.term.onData((data) => {
       if (this.closed) {
         return;
