@@ -42,3 +42,7 @@ typings/
 application/controller/static_pages/
 application/controller/static_pages.go
 sshwifty
+
+# Local runtime configuration (may contain credentials)
+sshwifty.conf.json
+preset.json
