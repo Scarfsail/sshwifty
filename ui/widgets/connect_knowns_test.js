@@ -1,4 +1,3 @@
-/*
 // Sshwifty - A Web SSH client
 //
 // Copyright (C) 2019-2026 Ni Rui <ranqus@gmail.com>
@@ -15,44 +14,28 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-*/
 
-@charset "utf-8";
+import assert from "assert";
+import * as knowns from "./connect_knowns.js";
 
-.connect-new {
-  min-height: 200px;
-  background: #3a3a3a;
-  font-size: 0.75em;
-  padding: 15px;
-}
+describe("Connect knowns", () => {
+  it("hasKnowns", () => {
+    const tests = [
+      { knowns: [], presets: [], restricted: false, expected: false },
+      { knowns: [], presets: [], restricted: true, expected: true },
+      { knowns: [{}], presets: [], restricted: false, expected: true },
+      { knowns: [], presets: [{}], restricted: false, expected: true },
+    ];
 
-.connect-new li .lst-wrap:hover {
-  background: #544;
-}
-
-.connect-new li .lst-wrap:active {
-  background: #444;
-}
-
-.connect-new li .lst-wrap {
-  cursor: pointer;
-  color: #aaa;
-  padding: 15px;
-}
-
-.connect-new li h2 {
-  color: #e9a;
-}
-
-.connect-new li h2::before {
-  content: ">";
-  margin: 0 5px 0 0;
-  color: #555;
-  font-weight: normal;
-  transition: ease 0.3s margin;
-}
-
-.connect-new li .lst-wrap:hover h2::before {
-  content: ">";
-  margin: 0 3px 0 2px;
-}
+    for (let i in tests) {
+      assert.strictEqual(
+        knowns.hasKnowns(
+          tests[i].knowns,
+          tests[i].presets,
+          tests[i].restricted,
+        ),
+        tests[i].expected,
+      );
+    }
+  });
+});

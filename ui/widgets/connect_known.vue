@@ -18,15 +18,15 @@
 -->
 
 <template>
-  <div id="connect-known-list" :class="{ reloaded: reloaded }">
+  <div class="connect-known-list" :class="{ reloaded: reloaded }">
     <div
-      v-if="knownList.length <= 0 && presets <= 0"
-      id="connect-known-list-empty"
+      v-if="knownList.length <= 0 && presets.length <= 0"
+      class="connect-known-list-empty"
     >
       No known remote available
     </div>
     <div v-else>
-      <div v-if="knownList.length > 0" id="connect-known-list-list">
+      <div v-if="knownList.length > 0" class="connect-known-list-list">
         <h3>Connected before</h3>
 
         <ul class="hlst lstcl1">
@@ -81,7 +81,7 @@
 
       <div
         v-if="presets.length > 0"
-        id="connect-known-list-presets"
+        class="connect-known-list-presets"
         :class="{
           'last-planel': knownList.length > 0,
         }"
@@ -110,15 +110,15 @@
             </div>
           </li>
         </ul>
-
-        <div v-if="restrictedToPresets" id="connect-known-list-presets-alert">
-          The operator has restricted the outgoing connections. You can only
-          connect to remotes from the pre-defined presets.
-        </div>
       </div>
     </div>
 
-    <div id="connect-known-list-import">
+    <div v-if="restrictedToPresets" class="connect-known-list-presets-alert">
+      The operator has restricted the outgoing connections. You can only connect
+      to remotes from the pre-defined presets.
+    </div>
+
+    <div class="connect-known-list-import">
       Tip: You can
       <a href="javascript:;" @click="importHosts">import</a> and
       <a href="javascript:;" @click="exportHosts">export</a>

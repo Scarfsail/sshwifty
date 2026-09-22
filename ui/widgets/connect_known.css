@@ -19,7 +19,7 @@
 
 @charset "utf-8";
 
-#connect-known-list {
+.connect-known-list {
   min-height: 200px;
   font-size: 0.75em;
   background: #3a3a3a;
@@ -28,7 +28,7 @@
   position: relative;
 }
 
-#connect-known-list h3 {
+.connect-known-list h3 {
   font-size: 1.1em;
   color: #999;
   margin: 5px 0 15px 0;
@@ -36,10 +36,10 @@
   font-weight: bold;
 }
 
-#connect-known-list.reloaded {
+.connect-known-list.reloaded {
 }
 
-#connect-known-list.reloaded::after {
+.connect-known-list.reloaded::after {
   opacity: 0;
   z-index: 2;
   content: " ";
@@ -57,12 +57,12 @@
   box-shadow: 0 0 10px #fff;
 }
 
-#connect-known-list-list,
-#connect-known-list-empty {
+.connect-known-list-list,
+.connect-known-list-empty {
   flex: auto;
 }
 
-#connect-known-list-empty {
+.connect-known-list-empty {
   text-align: center;
   color: #999;
   font-size: 1.2em;
@@ -72,42 +72,42 @@
   padding: 20px;
 }
 
-#connect-known-list-import {
+.connect-known-list-import {
   margin: 15px;
   color: #aaa;
   font-size: 1.1em;
   text-align: center;
 }
 
-#connect-known-list-import a {
+.connect-known-list-import a {
   color: #e9a;
   text-decoration: none;
 }
 
-#connect-known-list-list {
+.connect-known-list-list {
   padding: 15px 20px 20px 20px;
 }
 
-#connect-known-list-list li {
+.connect-known-list-list li {
   width: 50%;
   position: relative;
 }
 
 @media (max-width: 768px) {
-  #connect-known-list-list li {
+  .connect-known-list-list li {
     width: 100%;
   }
 }
 
-#connect-known-list-list li > .lst-wrap {
+.connect-known-list-list li > .lst-wrap {
   cursor: pointer;
 }
 
-#connect-known-list-list li > .lst-wrap:hover {
+.connect-known-list-list li > .lst-wrap:hover {
   background: #444;
 }
 
-#connect-known-list-list li > .labels {
+.connect-known-list-list li > .labels {
   position: absolute;
   top: 0;
   left: 0;
@@ -116,14 +116,14 @@
   letter-spacing: 1px;
 }
 
-#connect-known-list-list li > .labels > .type {
+.connect-known-list-list li > .labels > .type {
   display: inline-block;
   padding: 3px;
   background: #a56;
   color: #fff;
 }
 
-#connect-known-list-list li > .labels > .opt {
+.connect-known-list-list li > .labels > .opt {
   display: none;
   padding: 3px;
   background: #a56;
@@ -133,32 +133,32 @@
 }
 
 @media (max-width: 768px) {
-  #connect-known-list-list li > .labels > .opt {
+  .connect-known-list-list li > .labels > .opt {
     display: inline-block;
   }
 }
 
-#connect-known-list-list li > .labels > .opt.link {
+.connect-known-list-list li > .labels > .opt.link {
   background: #287;
   color: #fff;
 }
 
-#connect-known-list-list li > .labels > .opt.del {
+.connect-known-list-list li > .labels > .opt.del {
   background: #a56;
   color: #fff;
 }
 
-#connect-known-list-list li > .labels > .opt.clr {
+.connect-known-list-list li > .labels > .opt.clr {
   background: #b71;
   color: #fff;
 }
 
-#connect-known-list-list li:hover > .labels > .opt,
-#connect-known-list-list li:focus > .labels > .opt {
+.connect-known-list-list li:hover > .labels > .opt,
+.connect-known-list-list li:focus > .labels > .opt {
   display: inline-block;
 }
 
-#connect-known-list-list li > .lst-wrap > h4 {
+.connect-known-list-list li > .lst-wrap > h4 {
   font-size: 1.5em;
   margin-top: 5px;
   margin-bottom: 5px;
@@ -166,7 +166,7 @@
   overflow: hidden;
 }
 
-#connect-known-list-list li > .lst-wrap > h4::before {
+.connect-known-list-list li > .lst-wrap > h4::before {
   content: ">_";
   color: #555;
   font-size: 0.8em;
@@ -176,43 +176,43 @@
   border-radius: 2px;
 }
 
-#connect-known-list-list li > .lst-wrap > h4.highlight::before {
+.connect-known-list-list li > .lst-wrap > h4.highlight::before {
   color: #eee;
   background: #555;
 }
 
-#connect-known-list-presets {
+.connect-known-list-presets {
   margin-top: 10px;
   padding: 15px 20px 20px 20px;
 }
 
-#connect-known-list-presets.last-planel {
+.connect-known-list-presets.last-planel {
   background: #3f3f3f;
 }
 
-#connect-known-list-presets li {
+.connect-known-list-presets li {
   width: 50%;
   position: relative;
 }
 
-#connect-known-list-presets li.disabled {
+.connect-known-list-presets li.disabled {
   opacity: 0.5;
 }
 
 @media (max-width: 768px) {
-  #connect-known-list-presets li {
+  .connect-known-list-presets li {
     width: 100%;
   }
 }
 
-#connect-known-list-presets li > .lst-wrap {
+.connect-known-list-presets li > .lst-wrap {
   cursor: pointer;
   border-radius: 0 3px 3px 3px;
   margin: 12px 10px 10px 0;
   padding: 10px;
 }
 
-#connect-known-list-presets li > .lst-wrap > .labels {
+.connect-known-list-presets li > .lst-wrap > .labels {
   position: absolute;
   top: 0;
   left: 0;
@@ -221,7 +221,7 @@
   letter-spacing: 1px;
 }
 
-#connect-known-list-presets li > .lst-wrap > .labels > .type {
+.connect-known-list-presets li > .lst-wrap > .labels > .type {
   display: inline-block;
   padding: 3px;
   background: #a56;
@@ -229,13 +229,13 @@
   border-radius: 3px 3px 3px 0;
 }
 
-#connect-known-list-presets li > .lst-wrap > h4 {
+.connect-known-list-presets li > .lst-wrap > h4 {
   font-size: 1.3em;
   text-overflow: ellipsis;
   overflow: hidden;
 }
 
-#connect-known-list-presets-alert {
+.connect-known-list-presets-alert {
   font-size: 1.15em;
   color: #fff;
   background: #c73;

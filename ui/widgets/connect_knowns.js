@@ -1,4 +1,3 @@
-/*
 // Sshwifty - A Web SSH client
 //
 // Copyright (C) 2019-2026 Ni Rui <ranqus@gmail.com>
@@ -15,44 +14,11 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-*/
 
-@charset "utf-8";
-
-.connect-new {
-  min-height: 200px;
-  background: #3a3a3a;
-  font-size: 0.75em;
-  padding: 15px;
-}
-
-.connect-new li .lst-wrap:hover {
-  background: #544;
-}
-
-.connect-new li .lst-wrap:active {
-  background: #444;
-}
-
-.connect-new li .lst-wrap {
-  cursor: pointer;
-  color: #aaa;
-  padding: 15px;
-}
-
-.connect-new li h2 {
-  color: #e9a;
-}
-
-.connect-new li h2::before {
-  content: ">";
-  margin: 0 5px 0 0;
-  color: #555;
-  font-weight: normal;
-  transition: ease 0.3s margin;
-}
-
-.connect-new li .lst-wrap:hover h2::before {
-  content: ">";
-  margin: 0 3px 0 2px;
+// hasKnowns reports whether there is anything to show on the Known remotes
+// view. Restricted deployments always count as having something, since their
+// backend only allows connections built from presets, making the New remote
+// view useless there even when no preset is available
+export function hasKnowns(knowns, presets, restrictedToPresets) {
+  return restrictedToPresets || knowns.length > 0 || presets.length > 0;
 }

@@ -394,6 +394,18 @@
   text-align: center;
 }
 
+/* The remote list needs more room than the welcome note, and reads as a
+   list rather than as centered copy. The title and the server message around
+   it stay centered */
+#home-content-wrap.wide {
+  max-width: 900px;
+}
+
+#home-content-wrap.wide .connect-known-list,
+#home-content-wrap.wide .connect-new {
+  text-align: left;
+}
+
 #home-content h1 {
   margin: 20px 0;
 }
@@ -421,12 +433,4 @@
   background: #3c3c3c;
   border: none;
   margin: 30px 0;
-}
-
-#home-content-connect {
-  padding: 5px;
-  display: inline-block;
-  width: 20px;
-  height: 20px;
-  cursor: pointer;
 }
