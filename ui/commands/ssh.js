@@ -671,6 +671,9 @@ class Wizard {
       "connect.succeed"(rd, commandHandler) {
         self.connectionSucceed = true;
 
+        const uname =
+          self.info.name() + ":" + configInput.user + "@" + configInput.host;
+
         self.step.resolve(
           self.stepSuccessfulDone(
             new command.Result(
@@ -691,12 +694,13 @@ class Wizard {
                 events: commandHandler.events,
               }),
               self.controls.ui(),
+              { type: self.info.name(), uname: uname },
             ),
           ),
         );
 
         self.history.save(
-          self.info.name() + ":" + configInput.user + "@" + configInput.host,
+          uname,
           configInput.user + "@" + configInput.host,
           new Date(),
           self.info,

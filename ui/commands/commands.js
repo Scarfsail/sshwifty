@@ -31,12 +31,16 @@ export class Result {
    * @param {Info} info Result info
    * @param {object} control Result controller
    * @param {string} ui User interfact this command will use
+   * @param {object} reconnect History reference ({type, uname}) which can be
+   *                           used to reconnect this session, or null when
+   *                           the session cannot be reconnected
    */
-  constructor(name, info, control, ui) {
+  constructor(name, info, control, ui, reconnect = null) {
     this.name = name;
     this.info = info;
     this.control = control;
     this.ui = ui;
+    this.reconnect = reconnect;
   }
 }
 
