@@ -139,11 +139,34 @@ export default {
   },
   data() {
     return {
-      tab: !this.restrictedToPresets ? "new" : "known",
+      tab: this.defaultTab(),
       canSelect: true,
     };
   },
+  watch: {
+    display(newVal) {
+      if (!newVal) {
+        return;
+      }
+
+      // The window is never destroyed, so without this it would keep both
+      // the tab the user last switched to and a choice made back when there
+      // was nothing known yet
+      this.tab = this.defaultTab();
+    },
+  },
   methods: {
+    // Reconnecting to a remote used before is the common case, so the known
+    // remotes are what the window opens on whenever there are any.
+    // A method rather than a computed: Vue 2 sets methods up before data,
+    // computed properties only after it
+    defaultTab() {
+      return this.restrictedToPresets ||
+        this.knowns.length > 0 ||
+        this.presets.length > 0
+        ? "known"
+        : "new";
+    },
     switchTab(to) {
       if (this.inputting) {
         return;

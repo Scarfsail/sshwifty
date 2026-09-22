@@ -258,6 +258,10 @@ export default {
         }
         this.$emit("navigate-to", "");
       });
+    } else {
+      // Landing on an empty page, the next thing to do is always to pick a
+      // remote, so open the window as though the + button had been clicked
+      this.showConnectWindow();
     }
     window.addEventListener("beforeunload", this.onBrowserClose);
   },
