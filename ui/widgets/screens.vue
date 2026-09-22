@@ -35,6 +35,15 @@
         :class="'screen-error-level-' + screenInfo.indicator.level"
       >
         {{ screenInfo.indicator.message }}
+
+        <button
+          v-if="screenInfo.indicator.level === 'error' && screenInfo.reconnect"
+          class="screen-error-reconnect"
+          :disabled="inputting"
+          @click="reconnect(idx)"
+        >
+          Reconnect
+        </button>
       </div>
 
       <div class="screen-screen">
@@ -79,8 +88,15 @@ export default {
       type: Object,
       default: () => {},
     },
+    inputting: {
+      type: Boolean,
+      default: false,
+    },
   },
   methods: {
+    reconnect(index) {
+      this.$emit("reconnect", index);
+    },
     getComponent(ui) {
       switch (ui) {
         case "Console":

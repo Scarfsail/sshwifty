@@ -62,6 +62,8 @@
       :screen="tab.current"
       :screens="tab.tabs"
       :view-port="viewPort"
+      :inputting="connector.inputting"
+      @reconnect="reconnectTab"
       @stopped="tabStopped"
       @warning="tabWarning"
       @info="tabInfo"
@@ -103,7 +105,7 @@
       :knowns-export="exportKnowns"
       :knowns-import="importKnowns"
       :busy="connector.busy"
-      @display="windows.connect = $event"
+      @display="connectWindowDisplay"
       @connector-select="connectNew"
       @known-select="connectKnown"
       @known-remove="removeKnown"
@@ -220,6 +222,7 @@ export default {
         inputting: false,
         acquired: false,
         busy: false,
+        reconnectTabID: null,
         knowns: history.all(),
       },
       presets: this.commands.mergePresets(this.presetData),
@@ -281,6 +284,21 @@ export default {
     showConnectWindow() {
       this.closeAllWindow();
       this.windows.connect = true;
+    },
+    connectWindowDisplay(displaying) {
+      this.windows.connect = displaying;
+
+      if (displaying || this.connector.reconnectTabID === null) {
+        return;
+      }
+
+      // The window has been dismissed while a reconnect wizard was still
+      // running. Give up the reconnect and release the guard, keeping the
+      // dead tab as it is so it can be retried. Clearing the ID first makes
+      // the wizard's own late cancellation callback a no-op, since it no
+      // longer owns the reconnect
+      this.connector.reconnectTabID = null;
+      this.connector.inputting = false;
     },
     showTabsWindow() {
       this.closeAllWindow();
@@ -499,38 +517,162 @@ export default {
 
       this.connector.knowns = this.connector.historyRec.all();
     },
+    tabIndexByID(id) {
+      for (let i = 0; i < this.tab.tabs.length; i++) {
+        if (this.tab.tabs[i].id !== id) {
+          continue;
+        }
+
+        return i;
+      }
+
+      return -1;
+    },
+    reconnectTab(index) {
+      if (this.connector.inputting) {
+        return;
+      }
+
+      const self = this,
+        tab = this.tab.tabs[index],
+        recIdx = this.connector.historyRec.indexOf(tab.reconnect.uname);
+
+      if (recIdx < 0) {
+        tab.indicator.message =
+          "Unable to reconnect: the record of this remote is no longer " +
+          "available";
+
+        return;
+      }
+
+      const known = this.connector.historyRec.all()[recIdx],
+        reconnectTabID = tab.id;
+
+      this.showConnectWindow();
+
+      this.runConnect((stream) => {
+        // Claim the tab only once the backend stream is in hand. runConnect
+        // silently does nothing when it cannot deliver one (the socket is
+        // unreachable, or another connect already holds it), and an ID left
+        // set here would make the next successful connect of any kind
+        // replace this tab instead of opening its own
+        self.connector.reconnectTabID = reconnectTabID;
+
+        let connector = self.getConnectorByType(known.type);
+
+        if (!connector) {
+          alert("Unknown connector: " + known.type);
+
+          self.connector.reconnectTabID = null;
+          self.connector.inputting = false;
+
+          return;
+        }
+
+        self.connector.connector = {
+          id: connector.id(),
+          name: connector.name(),
+          description: connector.description(),
+          wizard: connector.execute(
+            stream,
+            self.controls,
+            self.connector.historyRec,
+            known.data,
+            known.session,
+            known.keptSessions,
+            (n) => {
+              self.connector.knowns = self.connector.historyRec.all();
+
+              if (self.connector.reconnectTabID !== reconnectTabID) {
+                return;
+              }
+
+              if (n.data().success) {
+                return;
+              }
+
+              self.reconnectFailed(reconnectTabID, n.data());
+            },
+          ),
+        };
+
+        self.connector.inputting = true;
+      });
+    },
+    reconnectFailed(reconnectTabID, data) {
+      const index = this.tabIndexByID(reconnectTabID);
+
+      if (index >= 0) {
+        this.tab.tabs[index].indicator.message =
+          data.errorTitle + ": " + data.errorMessage;
+      }
+
+      this.connector.reconnectTabID = null;
+      this.connector.inputting = false;
+      this.windows.connect = false;
+    },
     cancelConnection() {
+      this.connector.reconnectTabID = null;
       this.connector.inputting = false;
       this.connector.acquired = false;
     },
     connectionSucceed(data) {
+      const replaceIndex =
+        this.connector.reconnectTabID !== null
+          ? this.tabIndexByID(this.connector.reconnectTabID)
+          : -1;
+
+      this.connector.reconnectTabID = null;
       this.connector.inputting = false;
       this.connector.acquired = false;
       this.windows.connect = false;
 
-      this.addToTab(data);
+      this.addToTab(data, replaceIndex);
 
       this.$emit("tab-opened", this.tab.tabs);
     },
-    async addToTab(data) {
-      await this.switchTab(
-        this.tab.tabs.push({
-          id: this.tab.lastID++,
-          name: data.name,
-          info: data.info,
-          control: data.control,
-          ui: data.ui,
-          toolbar: false,
-          indicator: {
-            level: "",
-            message: "",
-            updated: false,
-          },
-          status: {
-            closing: false,
-          },
-        }) - 1,
-      );
+    async addToTab(data, replaceIndex = -1) {
+      const newTab = {
+        id: this.tab.lastID++,
+        name: data.name,
+        info: data.info,
+        control: data.control,
+        ui: data.ui,
+        reconnect: data.reconnect,
+        toolbar: false,
+        indicator: {
+          level: "",
+          message: "",
+          updated: false,
+        },
+        status: {
+          closing: false,
+        },
+      };
+
+      if (replaceIndex >= 0) {
+        const replaced = this.tab.tabs[replaceIndex];
+
+        // The replaced session is normally already finished, but the error
+        // indicator is raised by any failure of the screen's read loop, not
+        // only by a remote termination. Shut it down the same way closeTab
+        // does, so a still-running backend session is never orphaned
+        try {
+          replaced.control.disabled();
+
+          await replaced.control.close();
+        } catch (e) {
+          process.env.NODE_ENV === "development" && console.trace(e);
+        }
+
+        this.tab.tabs.splice(replaceIndex, 1, newTab);
+
+        await this.switchTab(replaceIndex);
+
+        return;
+      }
+
+      await this.switchTab(this.tab.tabs.push(newTab) - 1);
     },
     removeFromTab(index) {
       let isLast = index === this.tab.tabs.length - 1;
