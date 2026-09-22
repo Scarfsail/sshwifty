@@ -39,7 +39,7 @@
         <button
           v-if="screenInfo.indicator.level === 'error' && screenInfo.reconnect"
           class="screen-error-reconnect"
-          :disabled="inputting"
+          :disabled="busy"
           @click="reconnect(idx)"
         >
           Reconnect
@@ -88,7 +88,7 @@ export default {
       type: Object,
       default: () => {},
     },
-    inputting: {
+    busy: {
       type: Boolean,
       default: false,
     },

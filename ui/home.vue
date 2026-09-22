@@ -62,7 +62,7 @@
       :screen="tab.current"
       :screens="tab.tabs"
       :view-port="viewPort"
-      :inputting="connector.inputting"
+      :busy="connectorBusy"
       @reconnect="reconnectTab"
       @stopped="tabStopped"
       @warning="tabWarning"
@@ -234,6 +234,14 @@ export default {
       },
     };
   },
+  computed: {
+    // connectorBusy reports whether the single shared connector slot is
+    // taken, either by a live wizard or by a stream acquisition that has not
+    // produced one yet. A reconnect can only start when it is free
+    connectorBusy() {
+      return this.connector.inputting || this.connector.acquired;
+    },
+  },
   mounted() {
     this.ticker = setInterval(() => {
       this.tick();
@@ -347,9 +355,13 @@ export default {
       this.getStreamThenRun(
         (stream) => {
           this.connector.busy = false;
-          delivered = true;
 
           callback(stream);
+
+          // Only after callback has returned, so that a throw out of it
+          // (getStreamThenRun catches those) still counts as undelivered
+          // and lets the caller undo its own setup
+          delivered = true;
         },
         () => {
           this.connector.busy = false;
@@ -541,7 +553,7 @@ export default {
       return -1;
     },
     reconnectTab(index) {
-      if (this.connector.inputting) {
+      if (this.connectorBusy) {
         return;
       }
 
@@ -727,6 +739,14 @@ export default {
     async closeTab(index) {
       if (this.tab.tabs[index].status.closing) {
         return;
+      }
+
+      // Closing the tab a reconnect was claiming means the user no longer
+      // wants that session. Give the reconnect up, otherwise it would come
+      // back as a brand new tab once it succeeded
+      if (this.connector.reconnectTabID === this.tab.tabs[index].id) {
+        this.reconnectGiveUp(this.tab.tabs[index].id);
+        this.windows.connect = false;
       }
 
       this.tab.tabs[index].status.closing = true;
