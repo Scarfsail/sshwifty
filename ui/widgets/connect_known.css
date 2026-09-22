@@ -88,22 +88,22 @@
   padding: 15px 20px 20px 20px;
 }
 
-.connect-known-list-list li {
+.connect-known-list-list .hlst.lstcl1 > li {
   width: 50%;
   position: relative;
 }
 
 @media (max-width: 768px) {
-  .connect-known-list-list li {
+  .connect-known-list-list .hlst.lstcl1 > li {
     width: 100%;
   }
 }
 
-.connect-known-list-list li > .lst-wrap {
+.connect-known-list-list .hlst.lstcl1 > li > .lst-wrap {
   cursor: pointer;
 }
 
-.connect-known-list-list li > .lst-wrap:hover {
+.connect-known-list-list .hlst.lstcl1 > li > .lst-wrap:hover {
   background: #444;
 }
 
@@ -190,7 +190,7 @@
   background: #3f3f3f;
 }
 
-.connect-known-list-presets li {
+.connect-known-list-presets .hlst.lstcl2 > li {
   width: 50%;
   position: relative;
 }
@@ -200,12 +200,12 @@
 }
 
 @media (max-width: 768px) {
-  .connect-known-list-presets li {
+  .connect-known-list-presets .hlst.lstcl2 > li {
     width: 100%;
   }
 }
 
-.connect-known-list-presets li > .lst-wrap {
+.connect-known-list-presets .hlst.lstcl2 > li > .lst-wrap {
   cursor: pointer;
   border-radius: 0 3px 3px 3px;
   margin: 12px 10px 10px 0;

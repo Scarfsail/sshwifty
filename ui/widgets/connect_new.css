@@ -26,15 +26,15 @@
   padding: 15px;
 }
 
-.connect-new li .lst-wrap:hover {
+.connect-new .lst1 > li .lst-wrap:hover {
   background: #544;
 }
 
-.connect-new li .lst-wrap:active {
+.connect-new .lst1 > li .lst-wrap:active {
   background: #444;
 }
 
-.connect-new li .lst-wrap {
+.connect-new .lst1 > li .lst-wrap {
   cursor: pointer;
   color: #aaa;
   padding: 15px;
