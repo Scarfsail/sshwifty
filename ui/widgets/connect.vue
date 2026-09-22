@@ -23,6 +23,7 @@
     flash-class="home-window-display"
     :display="display"
     @display="$emit('display', $event)"
+    @close="$emit('close')"
   >
     <div id="connect-frame">
       <h1 class="window-title">Establish connection with</h1>

@@ -31,6 +31,7 @@ type serverInput struct {
 	ReadTimeout           int    // Read operation timeout, in second
 	WriteTimeout          int    // Write operation timeout, in second
 	HeartbeatTimeout      int    // Client heartbeat interval, in second
+	PingInterval          int    // Server Websocket ping interval, in second
 	ReadDelay             int    // Read delay, in millisecond
 	WriteDelay            int    // Write delay, in millisecond
 	TLSCertificateFile    string // Location of TLS certificate file
@@ -47,6 +48,7 @@ func (f *serverInput) concretize() Server {
 		ReadTimeout:           time.Duration(f.ReadTimeout) * time.Second,
 		WriteTimeout:          time.Duration(f.WriteTimeout) * time.Second,
 		HeartbeatTimeout:      time.Duration(f.HeartbeatTimeout) * time.Second,
+		PingInterval:          time.Duration(f.PingInterval) * time.Second,
 		ReadDelay:             time.Duration(f.ReadDelay) * time.Millisecond,
 		WriteDelay:            time.Duration(f.WriteDelay) * time.Millisecond,
 		TLSCertificateFile:    f.TLSCertificateFile,

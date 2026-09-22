@@ -222,6 +222,34 @@ func (s socket) buildCipherKey(r *http.Request) [16]byte {
 	return key
 }
 
+// keepAlive sends Ping frames to the client periodically until done is closed
+// or the sending has failed. Notice WriteControl is safe to be called
+// concurrently with all other methods, so no sender lock is needed here
+func (s socket) keepAlive(c *websocket.Conn, done <-chan struct{}) {
+	// A configuration that never went through normalization (see the Direct
+	// loader) can carry no interval at all, which time.NewTicker will panic on
+	if s.serverCfg.PingInterval <= 0 {
+		return
+	}
+	ticker := time.NewTicker(s.serverCfg.PingInterval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-done:
+			return
+		case <-ticker.C:
+			wErr := c.WriteControl(
+				websocket.PingMessage,
+				nil,
+				time.Now().Add(s.serverCfg.WriteTimeout),
+			)
+			if wErr != nil {
+				return
+			}
+		}
+	}
+}
+
 func (s socket) Get(
 	w *ResponseWriter, r *http.Request, l log.Logger) error {
 	// Error will not be returned when Websocket already handled
@@ -232,6 +260,13 @@ func (s socket) Get(
 	}
 	defer c.Close()
 	defer w.disable()
+
+	// Keep the connection alive with server-sent Ping frames. The client's
+	// network stack replies to them without involving the page script, so the
+	// connection stays readable even when the client page is suspended
+	pingDone := make(chan struct{})
+	defer close(pingDone)
+	go s.keepAlive(c, pingDone)
 
 	wsReader := rw.NewFetchReader(s.buildWSFetcher(c))
 	wsWriter := websocketWriter{Conn: c}
