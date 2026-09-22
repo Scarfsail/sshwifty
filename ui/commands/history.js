@@ -29,23 +29,18 @@ function extractSelectedData(kept, input) {
   if (!kept || typeof kept !== "object" || kept.length < 0) {
     return null;
   }
-
   let data = {},
     length = 0;
-
   for (let k in kept) {
     if (!input[kept[k]]) {
       continue;
     }
-
     data[kept[k]] = input[kept[k]];
     length++;
   }
-
   if (length <= 0) {
     return null;
   }
-
   return data;
 }
 
@@ -61,7 +56,6 @@ function metaContains(data, metaName, valContains) {
   switch (typeof data[metaName]) {
     case "string":
       return data[metaName].indexOf(valContains) >= 0;
-
     default:
       return false;
   }
@@ -95,10 +89,8 @@ export class History {
       if (this.records[i].uname !== uname) {
         continue;
       }
-
       return i;
     }
-
     return -1;
   }
 
@@ -117,11 +109,9 @@ export class History {
    */
   save(uname, title, lastUsed, info, data, sessionData, keptSessions) {
     const unameIdx = this.indexOf(uname);
-
     if (unameIdx >= 0) {
       this.records.splice(unameIdx, 1);
     }
-
     this.records.push({
       uname: uname,
       title: title,
@@ -132,14 +122,12 @@ export class History {
       session: sessionData,
       keptSessions: keptSessions,
     });
-
     if (this.records.length > this.maxItems) {
       this.records = this.records.slice(
         this.records.length - this.maxItems,
         this.records.length,
       );
     }
-
     this.store();
   }
 
@@ -162,11 +150,9 @@ export class History {
       if (this.records[i].uname !== uid) {
         continue;
       }
-
       this.records.splice(i, 1);
       break;
     }
-
     this.saver(this, this.records);
   }
 
@@ -181,12 +167,10 @@ export class History {
       if (this.records[i].uname !== uid) {
         continue;
       }
-
       this.records[i].session = null;
       this.records[i].keptSessions = [];
       break;
     }
-
     this.store();
   }
 
@@ -199,7 +183,6 @@ export class History {
    */
   all() {
     let r = [];
-
     for (let i in this.records) {
       r.push({
         uid: this.records[i].uname,
@@ -212,7 +195,6 @@ export class History {
         keptSessions: this.records[i].keptSessions,
       });
     }
-
     return r;
   }
 
@@ -224,7 +206,6 @@ export class History {
    */
   export() {
     let r = [];
-
     for (let i in this.records) {
       r.push({
         uname: this.records[i].uname,
@@ -240,7 +221,6 @@ export class History {
         keptSessions: this.records[i].keptSessions,
       });
     }
-
     return r;
   }
 
@@ -255,7 +235,6 @@ export class History {
       if (this.indexOf(records[i].uname) >= 0) {
         continue;
       }
-
       this.records.push({
         uname: records[i].uname,
         title: records[i].title,
@@ -270,7 +249,6 @@ export class History {
         keptSessions: records[i].keptSessions,
       });
     }
-
     this.store();
   }
 
@@ -285,27 +263,21 @@ export class History {
   search(type, metaName, keyword, max) {
     let maxResults = max > this.records.length ? this.records.length : max;
     let s = [];
-
     if (maxResults < 0) {
       maxResults = this.records.length;
     }
-
     for (let i = 0; i < this.records.length && s.length < maxResults; i++) {
       if (this.records[i].type !== type) {
         continue;
       }
-
       if (!this.records[i].data) {
         continue;
       }
-
       if (!metaContains(this.records[i].data, metaName, keyword)) {
         continue;
       }
-
       s.push(this.records[i]);
     }
-
     return s;
   }
 }

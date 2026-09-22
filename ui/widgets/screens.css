@@ -36,56 +36,6 @@
   flex: 0 0 0;
 }
 
-#home-content > .screen > .screen-error {
-  display: block;
-  padding: 10px;
-  background: #b44;
-  color: #fff;
-  font-size: 0.75em;
-  flex: 0 0;
-}
-
-#home-content > .screen > .screen-error.screen-error-level-error {
-  background: #b44;
-}
-
-#home-content > .screen > .screen-error.screen-error-level-warning {
-  background: #b82;
-}
-
-#home-content > .screen > .screen-error.screen-error-level-info {
-  background: #28b;
-}
-
-#home-content > .screen > .screen-error > .screen-error-reconnect {
-  margin-left: 10px;
-  padding: 2px 10px;
-  border: 1px solid #fff;
-  border-radius: 2px;
-  background: transparent;
-  color: #fff;
-  font-size: 1em;
-  cursor: pointer;
-}
-
-#home-content > .screen > .screen-error > .screen-error-reconnect:hover {
-  background: #fff;
-  color: #b44;
-}
-
-#home-content > .screen > .screen-error > .screen-error-reconnect[disabled] {
-  opacity: 0.5;
-  cursor: default;
-}
-
-#home-content
-  > .screen
-  > .screen-error
-  > .screen-error-reconnect[disabled]:hover {
-  background: transparent;
-  color: #fff;
-}
-
 #home-content > .screen > .screen-screen {
   flex: auto;
   padding: 0;

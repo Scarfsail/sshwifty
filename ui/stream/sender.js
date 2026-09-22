@@ -61,7 +61,6 @@ export class Sender {
   async sendData(data, callbacks) {
     try {
       await this.sender(data);
-
       for (let i in callbacks) {
         callbacks[i].resolve();
       }
@@ -83,10 +82,8 @@ export class Sender {
   appendBuffer(data) {
     const remainSize = this.buffer.length - this.bufferUsed,
       appendLength = data.length > remainSize ? remainSize : data.length;
-
     this.buffer.set(data.slice(0, appendLength), this.bufferUsed);
     this.bufferUsed += appendLength;
-
     return appendLength;
   }
 
@@ -98,10 +95,8 @@ export class Sender {
    */
   exportBuffer() {
     const buffer = this.buffer.slice(0, this.bufferUsed);
-
     this.bufferUsed = 0;
     this.bufferedRequests = 0;
-
     return buffer;
   }
 
@@ -111,42 +106,32 @@ export class Sender {
    */
   async sending() {
     let callbacks = [];
-
     for (;;) {
       const fetched = await this.subscribe.subscribe();
-
       // Force flush?
       if (fetched === true) {
         if (this.bufferUsed <= 0) {
           continue;
         }
-
         await this.sendData(this.exportBuffer(), callbacks);
         callbacks = [];
-
         continue;
       }
-
       callbacks.push({
         resolve: fetched.resolve,
         reject: fetched.reject,
       });
-
       // Add data to buffer and maybe flush when the buffer is full
       let currentSendDataLen = 0;
-
       while (fetched.data.length > currentSendDataLen) {
         const sentLen = this.appendBuffer(
           fetched.data.slice(currentSendDataLen, fetched.data.length),
         );
-
         // Buffer not full, wait for the force flush
         if (this.buffer.length > this.bufferUsed) {
           break;
         }
-
         currentSendDataLen += sentLen;
-
         await this.sendData(this.exportBuffer(), callbacks);
         callbacks = [];
       }
@@ -162,14 +147,11 @@ export class Sender {
       clearTimeout(this.sendDelay);
       this.sendDelay = null;
     }
-
     this.buffered = null;
     this.bufferUsed = 0;
     this.bufferedRequests = 0;
-
     this.subscribe.reject(new Exception("Sender has been cleared", false));
     this.subscribe.disable();
-
     this.sendingPoc.catch(() => {});
   }
 
@@ -186,38 +168,29 @@ export class Sender {
    */
   send(data) {
     let delayCleared = false;
-
     if (this.sendDelay !== null) {
       clearTimeout(this.sendDelay);
       this.sendDelay = null;
       delayCleared = true;
     }
-
     const self = this;
-
     return new Promise((resolve, reject) => {
       self.subscribe.resolve({
         data: data,
         resolve: resolve,
         reject: reject,
       });
-
       if (self.bufferedRequests >= self.maxBufferedRequests) {
         self.bufferedRequests = 0;
-
         self.subscribe.resolve(true);
-
         return;
       }
-
       if (delayCleared) {
         self.bufferedRequests++;
       }
-
       self.sendDelay = setTimeout(() => {
         self.sendDelay = null;
         self.bufferedRequests = 0;
-
         self.subscribe.resolve(true);
       }, self.bufferFlushDelay);
     });

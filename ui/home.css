@@ -296,8 +296,8 @@
 }
 
 #home-hd-tabs-tabs > li.active::after {
-  right: 0;
-  left: 0;
+  right: 5px;
+  left: 5px;
 }
 
 #home-hd-tabs-tabs > li.updated::after {
@@ -306,7 +306,17 @@
 }
 
 #home-hd-tabs-tabs > li.error::after {
-  background: #d55;
+  background: #b44;
+  height: 2px;
+}
+
+#home-hd-tabs-tabs > li.warning::after {
+  background: #b82;
+  height: 2px;
+}
+
+#home-hd-tabs-tabs > li.info::after {
+  background: #28b;
   height: 2px;
 }
 

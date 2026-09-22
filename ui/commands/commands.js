@@ -158,18 +158,14 @@ const defField = {
  */
 export function field(def, f) {
   let n = {};
-
   for (let i in def) {
     n[i] = def[i];
   }
-
   for (let i in f) {
     if (typeof n[i] === typeof f[i]) {
       n[i] = f[i];
-
       continue;
     }
-
     throw new Exception(
       'Field data type for "' +
         i +
@@ -180,11 +176,9 @@ export function field(def, f) {
         '" instead',
     );
   }
-
   if (!n["name"]) {
     throw new Exception('Field "name" must be specified');
   }
-
   return n;
 }
 
@@ -201,19 +195,15 @@ export function field(def, f) {
  */
 export function fields(definitions, fs) {
   let fss = [];
-
   for (let i in fs) {
     if (!fs[i]["name"]) {
       throw new Exception('Field "name" must be specified');
     }
-
     if (!definitions[fs[i].name]) {
       throw new Exception('Undefined field "' + fs[i].name + '"');
     }
-
     fss.push(field(definitions[fs[i].name], fs[i]));
   }
-
   return fss;
 }
 
@@ -221,7 +211,8 @@ export function fields(definitions, fs) {
  * Build command fields with preset data
  *
  * @param {object} definitions Definition of a group of fields
- * @param {object} fieldsData field data object, formated like a `defField`
+ * @param {Array<object>} fieldsData field data objects, each formatted like a
+ *                                   `defField`
  * @param {presets.Preset} presetData Preset data
  * @param {function} presetApplied Called when a preset is used for a field
  *
@@ -235,18 +226,15 @@ export function fieldsWithPreset(
   presetApplied,
 ) {
   let newFields = fields(definitions, fieldsData);
-
   for (let i in newFields) {
     try {
       newFields[i].value = presetData.meta(newFields[i].name);
       newFields[i].readonly = true;
-
       presetApplied(newFields[i].name);
     } catch (e) {
       // Do nothing
     }
   }
-
   return newFields;
 }
 
@@ -265,15 +253,11 @@ class Prompt {
     this.a = data.actionText;
     this.r = data.respond;
     this.c = data.cancel;
-
     this.i = [];
     this.f = {};
-
     for (let i in data.inputs) {
       let f = field(defField, data.inputs[i]);
-
       this.i.push(f);
-
       this.f[data.inputs[i].name.toLowerCase()] = {
         value: f.value,
         verify: f.verify,
@@ -309,11 +293,9 @@ class Prompt {
    */
   inputs() {
     let inputs = [];
-
     for (let i in this.i) {
       inputs.push(this.i[i]);
     }
-
     return inputs;
   }
 
@@ -339,27 +321,21 @@ class Prompt {
    */
   submit(inputs) {
     let fields = {};
-
     for (let i in this.f) {
       fields[i] = this.f[i].value;
     }
-
     for (let i in inputs) {
       let k = i.toLowerCase();
-
       if (typeof fields[k] === "undefined") {
         throw new Exception('Field "' + k + '" is undefined');
       }
-
       try {
         this.f[k].verify(inputs[i]);
       } catch (e) {
         throw new Exception('Field "' + k + '" is invalid: ' + e);
       }
-
       fields[k] = inputs[i];
     }
-
     return this.r(fields);
   }
 
@@ -484,13 +460,10 @@ class Next {
     switch (this.type()) {
       case NEXT_PROMPT:
         return new Prompt(this.d);
-
       case NEXT_WAIT:
         return new Wait(this.d);
-
       case NEXT_DONE:
         return new Done(this.d);
-
       default:
         throw new Exception("Unknown data type");
     }
@@ -512,7 +485,6 @@ class Wizard {
     this.subs = subs;
     this.done = done;
     this.closed = false;
-
     this.built.run();
   }
 
@@ -528,14 +500,11 @@ class Wizard {
     if (this.closed) {
       throw new Exception("Wizard already closed, no next step is available");
     }
-
     let n = await this.subs.subscribe();
-
     if (n.type() === NEXT_DONE) {
       this.close();
       this.done(n);
     }
-
     return new Next(n);
   }
 
@@ -569,9 +538,7 @@ class Wizard {
     if (this.closed) {
       return;
     }
-
     this.closed = true;
-
     return this.built.close();
   }
 }
@@ -738,7 +705,6 @@ class Builder {
    */
   execute(streams, controls, history, config, session, keptSessions, done) {
     let subs = new subscribe.Subscribe();
-
     return new Wizard(
       this.executer(
         new Info(this),
@@ -769,7 +735,6 @@ class Builder {
    */
   launch(streams, controls, history, launcher, done) {
     let subs = new subscribe.Subscribe();
-
     return new Wizard(
       this.launchCmd(
         new Info(this),
@@ -830,7 +795,6 @@ export class Commands {
    */
   constructor(commands) {
     this.commands = [];
-
     for (let i = 0; i < commands.length; i++) {
       this.commands.push(new Builder(commands[i]));
     }
@@ -868,17 +832,14 @@ export class Commands {
    */
   mergePresets(ps) {
     let pp = [];
-
     for (let i = 0; i < this.commands.length; i++) {
       const fetched = ps.fetch(this.commands[i].name());
-
       for (let j = 0; j < fetched.length; j++) {
         pp.push(
           new Preset(this.commands[i].represet(fetched[j]), this.commands[i]),
         );
       }
     }
-
     return pp;
   }
 }

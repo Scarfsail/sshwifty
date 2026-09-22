@@ -29,13 +29,15 @@ import * as presets from "./presets.js";
 import * as strings from "./string.js";
 
 const AUTHMETHOD_NONE = 0x00;
-const AUTHMETHOD_PASSPHRASE = 0x01;
-const AUTHMETHOD_PRIVATE_KEY = 0x02;
+const AUTHMETHOD_PASSPHRASE = 0b0000_0001;
+const AUTHMETHOD_PRIVATE_KEY = 0b0000_0010;
+const AUTHMETHOD_KEYBOARD_INTERACTIVE = 0b0000_0100;
 
 const COMMAND_ID = 0x01;
 
 const MAX_USERNAME_LEN = 127;
 const MAX_PASSWORD_LEN = 4096;
+const MAX_CHALLENGE_ANSWER_LEN = 4096;
 const DEFAULT_PORT = 22;
 
 const SERVER_REMOTE_STDOUT = 0x00;
@@ -45,6 +47,10 @@ const SERVER_CONNECT_FAILED = 0x03;
 const SERVER_CONNECTED = 0x04;
 const SERVER_CONNECT_REQUEST_FINGERPRINT = 0x05;
 const SERVER_CONNECT_REQUEST_CREDENTIAL = 0x06;
+
+const SERVER_CONNECT_REQUEST_CREDENTIAL_PRIVATEKEY = 0x00;
+const SERVER_CONNECT_REQUEST_CREDENTIAL_PASSPHRASE = 0x01;
+const SERVER_CONNECT_REQUEST_CREDENTIAL_KEYBOARD = 0x02;
 
 const CLIENT_DATA_STDIN = 0x00;
 const CLIENT_DATA_RESIZE = 0x01;
@@ -82,7 +88,9 @@ class SSH {
         "connect.failed",
         "connect.succeed",
         "connect.fingerprint",
-        "connect.credential",
+        "connect.credential.privatekey",
+        "connect.credential.passphrase",
+        "connect.credential.keyboard",
         "@stdout",
         "@stderr",
         "close",
@@ -108,13 +116,10 @@ class SSH {
       ),
       addrBuf = addr.buffer(),
       authMethod = new Uint8Array([this.config.auth]);
-
     let data = new Uint8Array(userBuf.length + addrBuf.length + 1);
-
     data.set(userBuf, 0);
     data.set(addrBuf, userBuf.length);
     data.set(authMethod, userBuf.length + addrBuf.length);
-
     initialSender.send(data);
   }
 
@@ -128,10 +133,8 @@ class SSH {
   initialize(streamInitialHeader) {
     if (!streamInitialHeader.success()) {
       this.events.fire("initialization.failed", streamInitialHeader);
-
       return;
     }
-
     this.events.fire("initialized", streamInitialHeader);
   }
 
@@ -146,53 +149,61 @@ class SSH {
    * @throws {Exception} When the stream header type is unknown
    *
    */
-  tick(streamHeader, rd) {
+  async tick(streamHeader, rd) {
     switch (streamHeader.marker()) {
       case SERVER_CONNECT_REQUEST_CREDENTIAL:
         if (!this.connected) {
-          return this.events.fire("connect.credential", rd, this.sender);
+          let credType = await reader.readOne(rd);
+          let authType = "";
+          switch (credType[0]) {
+            case SERVER_CONNECT_REQUEST_CREDENTIAL_PRIVATEKEY:
+              authType = "connect.credential.privatekey";
+              break;
+            case SERVER_CONNECT_REQUEST_CREDENTIAL_PASSPHRASE:
+              authType = "connect.credential.passphrase";
+              break;
+            case SERVER_CONNECT_REQUEST_CREDENTIAL_KEYBOARD:
+              authType = "connect.credential.keyboard";
+              break;
+          }
+          if (authType.length <= 0) {
+            throw new Exception("Request an unknown credential type");
+          }
+          return this.events.fire(authType, rd, this.sender);
         }
         break;
-
       case SERVER_CONNECT_REQUEST_FINGERPRINT:
         if (!this.connected) {
           return this.events.fire("connect.fingerprint", rd, this.sender);
         }
         break;
-
       case SERVER_CONNECTED:
         if (!this.connected) {
           this.connected = true;
-
           return this.events.fire("connect.succeed", rd, this);
         }
         break;
-
       case SERVER_CONNECT_FAILED:
         if (!this.connected) {
           return this.events.fire("connect.failed", rd);
         }
         break;
-
       case SERVER_HOOK_OUTPUT_BEFORE_CONNECTING:
         if (!this.connected) {
           return this.events.fire("hook.before_connected", rd);
         }
         break;
-
       case SERVER_REMOTE_STDERR:
         if (this.connected) {
           return this.events.fire("stderr", rd);
         }
         break;
-
       case SERVER_REMOTE_STDOUT:
         if (this.connected) {
           return this.events.fire("stdout", rd);
         }
         break;
     }
-
     throw new Exception("Unknown stream header marker");
   }
 
@@ -223,10 +234,8 @@ class SSH {
    */
   async sendResize(rows, cols) {
     let data = new DataView(new ArrayBuffer(4));
-
     data.setUint16(0, rows);
     data.setUint16(2, cols);
-
     return this.sender.send(CLIENT_DATA_RESIZE, new Uint8Array(data.buffer));
   }
 
@@ -236,7 +245,6 @@ class SSH {
    */
   async close() {
     await this.sendClose();
-
     return this.events.fire("close");
   }
 
@@ -264,23 +272,18 @@ const initialFieldDef = {
       if (d.length <= 0) {
         throw new Error("Hostname must be specified");
       }
-
       let addr = common.splitHostPort(d, DEFAULT_PORT);
-
       if (addr.addr.length <= 0) {
         throw new Error("Cannot be empty");
       }
-
       if (addr.addr.length > address.MAX_ADDR_LEN) {
         throw new Error(
           "Can no longer than " + address.MAX_ADDR_LEN + " bytes",
         );
       }
-
       if (addr.port <= 0) {
         throw new Error("Port must be specified");
       }
-
       return "Look like " + addr.type + " address";
     },
   },
@@ -298,13 +301,11 @@ const initialFieldDef = {
       if (d.length <= 0) {
         throw new Error("Username must be specified");
       }
-
       if (d.length > MAX_USERNAME_LEN) {
         throw new Error(
           "Username must not longer than " + MAX_USERNAME_LEN + " bytes",
         );
       }
-
       return "We'll login as user \"" + d + '"';
     },
   },
@@ -323,10 +324,8 @@ const initialFieldDef = {
         if (common.charsetPresets[i] !== d) {
           continue;
         }
-
         return "";
       }
-
       throw new Error('The character encoding "' + d + '" is not supported');
     },
   },
@@ -360,13 +359,11 @@ const initialFieldDef = {
       if (d.length <= 0) {
         throw new Error("Password must be specified");
       }
-
       if (d.length > MAX_PASSWORD_LEN) {
         throw new Error(
           "It's too long, make it shorter than " + MAX_PASSWORD_LEN + " bytes",
         );
       }
-
       return "We'll login with this password";
     },
   },
@@ -395,44 +392,34 @@ const initialFieldDef = {
       if (d.length <= 0) {
         throw new Error("Private Key must be specified");
       }
-
       if (d.length > MAX_PASSWORD_LEN) {
         throw new Error(
           "It's too long, make it shorter than " + MAX_PASSWORD_LEN + " bytes",
         );
       }
-
       const lines = d.trim().split("\n");
       let firstLineReaded = false;
-
       for (let i in lines) {
         if (!firstLineReaded) {
           if (lines[i].indexOf("-") === 0) {
             firstLineReaded = true;
-
             if (lines[i].indexOf("RSA") <= 0) {
               break;
             }
           }
-
           continue;
         }
-
         if (lines[i].indexOf("Proc-Type: 4,ENCRYPTED") === 0) {
           throw new Error("Cannot use encrypted Private Key file");
         }
-
         if (lines[i].indexOf(":") > 0) {
           continue;
         }
-
         if (lines[i].indexOf("MII") < 0) {
           throw new Error("Cannot use encrypted Private Key file");
         }
-
         break;
       }
-
       return "We'll login with this Private Key";
     },
   },
@@ -442,23 +429,32 @@ const initialFieldDef = {
       "Please make sure the authentication method that you selected is " +
       "supported by the server, otherwise it will be ignored and likely " +
       "cause the login to fail",
-    type: "radio",
-    value: "",
-    example: "Password,Private Key,None",
+    type: "checkboxes",
+    value: "Private Key,Password,Keyboard Interactive",
+    example: "Private Key,Password,Keyboard Interactive",
     readonly: false,
     suggestions(input) {
       return [];
     },
-    verify(d) {
-      switch (d) {
-        case "Password":
-        case "Private Key":
-        case "None":
-          return "";
-
-        default:
-          throw new Error("Authentication method must be specified");
+    verify(v) {
+      if (v.length <= 0) {
+        return "We'll try to login without authentication"; // NO AUTH
       }
+      let d = v.split(",");
+      for (let i in d) {
+        switch (d[i]) {
+          case "Private Key":
+          case "Password":
+          case "Keyboard Interactive":
+          case "None":
+            continue;
+          default:
+            throw new Error(
+              '"' + d[i] + '" is not a known authentication method',
+            );
+        }
+      }
+      return "";
     },
   },
   Fingerprint: {
@@ -480,6 +476,29 @@ const initialFieldDef = {
   },
 };
 
+const dynamicFieldDef = {
+  name: "",
+  description: "",
+  type: "textdata",
+  value: "",
+  example: "",
+  readonly: false,
+  suggestions(input) {
+    return [];
+  },
+  verify(d) {
+    if (d.length <= 0) {
+      throw new Error("Value must be specified");
+    }
+    if (d.length > MAX_CHALLENGE_ANSWER_LEN) {
+      throw new Error(
+        "Value must be shorter than " + MAX_CHALLENGE_ANSWER_LEN + "characters",
+      );
+    }
+    return "";
+  },
+};
+
 /**
  * Return auth method from given string
  *
@@ -490,20 +509,23 @@ const initialFieldDef = {
  * @throws {Exception} When auth method is invalid
  *
  */
-function getAuthMethodFromStr(d) {
-  switch (d) {
-    case "None":
-      return AUTHMETHOD_NONE;
-
-    case "Password":
-      return AUTHMETHOD_PASSPHRASE;
-
-    case "Private Key":
-      return AUTHMETHOD_PRIVATE_KEY;
-
-    default:
-      throw new Exception("Unknown Auth method");
+function getAuthMethodFromStr(b) {
+  let method = AUTHMETHOD_NONE,
+    d = b.split(",");
+  for (let i in d) {
+    switch (d[i]) {
+      case "Password":
+        method |= AUTHMETHOD_PASSPHRASE;
+        break;
+      case "Private Key":
+        method |= AUTHMETHOD_PRIVATE_KEY;
+        break;
+      case "Keyboard Interactive":
+        method |= AUTHMETHOD_KEYBOARD_INTERACTIVE;
+        break;
+    }
   }
+  return method;
 }
 
 class Wizard {
@@ -537,12 +559,19 @@ class Wizard {
     this.session = session
       ? session
       : {
-          credential: "",
+          credential: {},
         };
     this.keptSessions = keptSessions;
     this.step = subs;
     this.controls = controls.get("SSH");
     this.history = history;
+    this.repeatedAuth = {};
+  }
+
+  isAuthRepeated(authType) {
+    const repeated = this.repeatedAuth[authType];
+    this.repeatedAuth[authType] = true;
+    return repeated;
   }
 
   run() {
@@ -609,7 +638,6 @@ class Wizard {
    */
   buildCommand(sender, configInput, sessionData) {
     let self = this;
-
     let config = {
       user: common.strToUint8Array(configInput.user),
       auth: getAuthMethodFromStr(configInput.authentication),
@@ -618,10 +646,8 @@ class Wizard {
       host: address.parseHostPort(configInput.host, DEFAULT_PORT),
       fingerprint: configInput.fingerprint,
     };
-
     // Copy the keptSessions from the record so it will not be overwritten here
     let keptSessions = self.keptSessions ? [].concat(...self.keptSessions) : [];
-
     return new SSH(sender, config, {
       "initialization.failed"(hd) {
         switch (hd.data()) {
@@ -630,23 +656,20 @@ class Wizard {
               self.stepErrorDone("Request failed", "Invalid username"),
             );
             return;
-
           case SERVER_REQUEST_ERROR_BAD_ADDRESS:
             self.step.resolve(
               self.stepErrorDone("Request failed", "Invalid address"),
             );
             return;
-
           case SERVER_REQUEST_ERROR_BAD_AUTHMETHOD:
             self.step.resolve(
               self.stepErrorDone(
                 "Request failed",
-                "Invalid authication method",
+                "Invalid authentication method",
               ),
             );
             return;
         }
-
         self.step.resolve(
           self.stepErrorDone("Request failed", "Unknown error: " + hd.data()),
         );
@@ -655,25 +678,19 @@ class Wizard {
         self.step.resolve(self.stepWaitForEstablishWait(configInput.host));
       },
       async "connect.failed"(rd) {
-        let d = new TextDecoder("utf-8").decode(
-          await reader.readCompletely(rd),
-        );
+        const d = strings.toString(await reader.readCompletely(rd), "utf-8");
         self.step.resolve(self.stepErrorDone("Connection failed", d));
       },
       async "hook.before_connected"(rd) {
-        const d = new TextDecoder("utf-8").decode(
-          await reader.readCompletely(rd),
-        );
+        const d = strings.toString(await reader.readCompletely(rd), "utf-8");
         self.step.resolve(
           self.stepHookOutputPrompt("Waiting for server hook", d),
         );
       },
       "connect.succeed"(rd, commandHandler) {
         self.connectionSucceed = true;
-
         const uname =
           self.info.name() + ":" + configInput.user + "@" + configInput.host;
-
         self.step.resolve(
           self.stepSuccessfulDone(
             new command.Result(
@@ -698,7 +715,6 @@ class Wizard {
             ),
           ),
         );
-
         self.history.save(
           uname,
           configInput.user + "@" + configInput.host,
@@ -718,11 +734,9 @@ class Wizard {
               if (!configInput.fingerprint) {
                 return FingerprintPromptVerifyNoRecord;
               }
-
               if (configInput.fingerprint === v) {
                 return FingerprintPromptVerifyPassed;
               }
-
               return FingerprintPromptVerifyMismatch;
             },
             (newFingerprint) => {
@@ -731,16 +745,52 @@ class Wizard {
           ),
         );
       },
-      async "connect.credential"(rd, sd) {
+      async "connect.credential.privatekey"(rd, sd) {
         self.step.resolve(
-          self.stepCredentialPrompt(rd, sd, config, (newCred, fromPreset) => {
-            sessionData.credential = newCred;
-
-            // Save the credential if the credential was from a preset
-            if (fromPreset && keptSessions.indexOf("credential") < 0) {
-              keptSessions.push("credential");
-            }
-          }),
+          await self.stepCredentialPrivateKeyPrompt(
+            rd,
+            sd,
+            config,
+            (newCred, fromPreset) => {
+              sessionData.credential = newCred;
+              // Save the credential if the credential was from a preset
+              if (fromPreset && keptSessions.indexOf("credential") < 0) {
+                keptSessions.push("credential");
+              }
+            },
+          ),
+        );
+      },
+      async "connect.credential.passphrase"(rd, sd) {
+        self.step.resolve(
+          await self.stepCredentialPassphrasePrompt(
+            rd,
+            sd,
+            config,
+            (newCred, fromPreset) => {
+              sessionData.credential = newCred;
+              // Save the credential if the credential was from a preset
+              if (fromPreset && keptSessions.indexOf("credential") < 0) {
+                keptSessions.push("credential");
+              }
+            },
+          ),
+        );
+      },
+      async "connect.credential.keyboard"(rd, sd) {
+        self.step.resolve(
+          await self.stepCredentialKeyboardPrompt(
+            rd,
+            sd,
+            config,
+            (newCred, fromPreset) => {
+              sessionData.credential = newCred;
+              // Save the credential if the credential was from a preset
+              if (fromPreset && keptSessions.indexOf("credential") < 0) {
+                keptSessions.push("credential");
+              }
+            },
+          ),
         );
       },
       "@stdout"(rd) {},
@@ -759,14 +809,12 @@ class Wizard {
 
   stepInitialPrompt() {
     let self = this;
-
     return command.prompt(
       "SSH",
       "Secure Shell Host",
       "Connect",
       (r) => {
         self.hasStarted = true;
-
         self.streams.request(COMMAND_ID, (sd) => {
           return self.buildCommand(
             sd,
@@ -783,7 +831,6 @@ class Wizard {
             self.session,
           );
         });
-
         self.step.resolve(self.stepWaitForAcceptWait());
       },
       () => {},
@@ -799,9 +846,7 @@ class Wizard {
                 input,
                 HostMaxSearchResults,
               );
-
               let sugg = [];
-
               for (let i = 0; i < hosts.length; i++) {
                 sugg.push({
                   title: hosts[i].title,
@@ -813,7 +858,6 @@ class Wizard {
                   },
                 });
               }
-
               return sugg;
             },
           },
@@ -830,22 +874,18 @@ class Wizard {
 
   async stepFingerprintPrompt(rd, sd, verify, newFingerprint) {
     const self = this;
-
-    let fingerprintData = new TextDecoder("utf-8").decode(
+    let fingerprintData = strings.toString(
         await reader.readCompletely(rd),
+        "utf-8",
       ),
       fingerprintChanged = false;
-
     switch (verify(fingerprintData)) {
       case FingerprintPromptVerifyPassed:
         sd.send(CLIENT_CONNECT_RESPOND_FINGERPRINT, new Uint8Array([0]));
-
         return self.stepContinueWaitForEstablishWait();
-
       case FingerprintPromptVerifyMismatch:
         fingerprintChanged = true;
     }
-
     return command.prompt(
       !fingerprintChanged
         ? "Do you recognize this server?"
@@ -856,14 +896,11 @@ class Wizard {
       !fingerprintChanged ? "Yes, I do" : "I'm aware of the change",
       (r) => {
         newFingerprint(fingerprintData);
-
         sd.send(CLIENT_CONNECT_RESPOND_FINGERPRINT, new Uint8Array([0]));
-
         self.step.resolve(self.stepContinueWaitForEstablishWait());
       },
       () => {
         sd.send(CLIENT_CONNECT_RESPOND_FINGERPRINT, new Uint8Array([1]));
-
         self.step.resolve(
           command.wait("Rejecting", "Sending rejection to the backend"),
         );
@@ -888,35 +925,43 @@ class Wizard {
     );
   }
 
-  async stepCredentialPrompt(rd, sd, config, newCredential) {
+  getCredential(config, credentialType) {
+    if (typeof config.credential !== "object") {
+      return "";
+    }
+    if (typeof config.credential[credentialType] !== "string") {
+      return "";
+    }
+    return config.credential[credentialType];
+  }
+
+  buildCredential(credential, newCredentialType, newCredentialValue) {
+    if (typeof credential !== "object") {
+      credential = {};
+    }
+    credential[newCredentialType] = newCredentialValue;
+    return credential;
+  }
+
+  async stepSimpleCredentialPrompt(
+    rd,
+    sd,
+    config,
+    credentialStorageType,
+    fields,
+    title,
+    description,
+    newCredential,
+  ) {
     const self = this;
-
-    let fields = [];
-
-    if (config.credential.length > 0) {
+    let credential = self.getCredential(config, credentialStorageType);
+    if (!self.isAuthRepeated(credentialStorageType) && credential.length > 0) {
       sd.send(
         CLIENT_CONNECT_RESPOND_CREDENTIAL,
-        new TextEncoder().encode(config.credential),
+        strings.fromString(credential),
       );
-
       return self.stepContinueWaitForEstablishWait();
     }
-
-    switch (config.auth) {
-      case AUTHMETHOD_PASSPHRASE:
-        fields = [{ name: "Password" }];
-        break;
-
-      case AUTHMETHOD_PRIVATE_KEY:
-        fields = [{ name: "Private Key" }];
-        break;
-
-      default:
-        throw new Exception(
-          'Auth method "' + config.auth + '" was unsupported',
-        );
-    }
-
     let presetCredentialUsed = false;
     const inputFields = command.fieldsWithPreset(
       initialFieldDef,
@@ -926,30 +971,106 @@ class Wizard {
         if (r !== fields[0].name) {
           return;
         }
-
         presetCredentialUsed = true;
       },
     );
-
     return command.prompt(
-      "Provide credential",
-      "Please input your credential",
-      "Login",
+      title,
+      description,
+      "Authenticate",
       (r) => {
         let vv = r[fields[0].name.toLowerCase()];
-
-        sd.send(
-          CLIENT_CONNECT_RESPOND_CREDENTIAL,
-          new TextEncoder().encode(vv),
+        sd.send(CLIENT_CONNECT_RESPOND_CREDENTIAL, strings.fromString(vv));
+        newCredential(
+          self.buildCredential(config.credential, credentialStorageType, vv),
+          presetCredentialUsed,
         );
-
-        newCredential(vv, presetCredentialUsed);
-
         self.step.resolve(self.stepContinueWaitForEstablishWait());
       },
       () => {
         sd.close();
+        self.step.resolve(
+          command.wait(
+            "Cancelling login",
+            "Cancelling login request, please wait",
+          ),
+        );
+      },
+      inputFields,
+    );
+  }
 
+  async stepCredentialPrivateKeyPrompt(rd, sd, config, newCredential) {
+    const credentialStoreType = "PrivateKey";
+    return await this.stepSimpleCredentialPrompt(
+      rd,
+      sd,
+      config,
+      credentialStoreType,
+      [{ name: "Private Key" }],
+      "Provide private key",
+      "Remote is requesting for your private key",
+      newCredential,
+    );
+  }
+
+  async stepCredentialPassphrasePrompt(rd, sd, config, newCredential) {
+    const credentialStoreType = "Password";
+    return await this.stepSimpleCredentialPrompt(
+      rd,
+      sd,
+      config,
+      credentialStoreType,
+      [{ name: "Password" }],
+      "Provide password",
+      "Remote is requesting for your password",
+      newCredential,
+    );
+  }
+
+  async stepCredentialKeyboardPrompt(rd, sd, config, newCredential) {
+    const name = strings.toString(
+        (await strings.String.read(rd)).data(),
+        "utf-8",
+      ),
+      instruction = strings.toString(
+        (await strings.String.read(rd)).data(),
+        "utf-8",
+      ),
+      questionsBytes = await strings.parseStrings(rd);
+    let inputFields = [];
+    for (let i in questionsBytes) {
+      inputFields.push(
+        command.field(dynamicFieldDef, {
+          name:
+            "" + i + ": " + strings.toString(questionsBytes[i].data(), "utf-8"),
+          type: "text",
+        }),
+      );
+    }
+    const self = this;
+    return command.prompt(
+      "Provide answers",
+      name.length > 0 ? name : "Respond to authentication challenges",
+      "Authenticate",
+      (r) => {
+        let results = [];
+        for (let i in inputFields) {
+          results.push(
+            new strings.String(
+              strings.fromString(r[inputFields[i].name.toLowerCase()]),
+            ),
+          );
+        }
+        let vv = strings.marshalStrings(results);
+        if (vv.length > MAX_CHALLENGE_ANSWER_LEN) {
+          throw new Error("Authenticate answers is too long");
+        }
+        sd.send(CLIENT_CONNECT_RESPOND_CREDENTIAL, vv);
+        self.step.resolve(self.stepContinueWaitForEstablishWait());
+      },
+      () => {
+        sd.close();
         self.step.resolve(
           command.wait(
             "Cancelling login",
@@ -996,15 +1117,12 @@ class Executer extends Wizard {
       controls,
       history,
     );
-
     this.config = config;
   }
 
   stepInitialPrompt() {
     const self = this;
-
     self.hasStarted = true;
-
     self.streams.request(COMMAND_ID, (sd) => {
       return self.buildCommand(
         sd,
@@ -1019,7 +1137,6 @@ class Executer extends Wizard {
         self.session,
       );
     });
-
     return self.stepWaitForAcceptWait();
   }
 }
@@ -1089,22 +1206,17 @@ export class Command {
 
   launch(info, launcher, streams, subs, controls, history) {
     const d = launcher.split("|", 3);
-
     if (d.length < 2) {
       throw new Exception('Given launcher "' + launcher + '" was invalid');
     }
-
     const userHostName = d[0].match(new RegExp("^(.*)\\@(.*)$"));
-
     if (!userHostName || userHostName.length !== 3) {
       throw new Exception('Given launcher "' + launcher + '" was malformed');
     }
-
     let user = userHostName[1],
       host = userHostName[2],
       auth = d[1],
       charset = d.length >= 3 && d[2] ? d[2] : "utf-8"; // RM after depreciation
-
     try {
       initialFieldDef["User"].verify(user);
       initialFieldDef["Host"].verify(host);
@@ -1115,7 +1227,6 @@ export class Command {
         'Given launcher "' + launcher + '" was malformed ' + e,
       );
     }
-
     return this.execute(
       info,
       {
@@ -1147,11 +1258,9 @@ export class Command {
 
   represet(preset) {
     const host = preset.host();
-
     if (host.length > 0) {
       preset.insertMeta("Host", host);
     }
-
     return preset;
   }
 }

@@ -16,6 +16,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import * as reader from "../stream/reader.js";
+import * as sender from "../stream/sender.js";
 import * as integer from "./integer.js";
 
 export class String {
@@ -24,14 +25,12 @@ export class String {
    *
    * @param {reader.Reader} rd Source reader
    *
-   * @returns {String} readed string
+   * @returns {String} read string
    *
    */
   static async read(rd) {
     let l = new integer.Integer(0);
-
-    await l.unmarshal(rd);
-
+    await l.unmarshall(rd);
     return new String(await reader.readN(rd, l.value()));
   }
 
@@ -63,10 +62,8 @@ export class String {
   buffer() {
     let lBytes = new integer.Integer(this.str.length).marshal(),
       buf = new Uint8Array(lBytes.length + this.str.length);
-
     buf.set(lBytes, 0);
     buf.set(this.str, lBytes.length);
-
     return buf;
   }
 }
@@ -86,4 +83,68 @@ export function truncate(str, maxLength, exceed) {
     return str;
   }
   return str.substring(0, maxLength) + exceed;
+}
+
+/**
+ * Marshal a list of strings
+ *
+ * @param {Array<String>} items A list of string
+ *
+ * @returns {Uint8Array} A list of string
+ *
+ */
+export function marshalStrings(items) {
+  let total = new integer.Integer(items.length);
+  let result = total.marshal();
+  for (let i in items) {
+    let buf = items[i].buffer();
+    let newBuf = new Uint8Array(result.length + buf.length);
+    newBuf.set(result);
+    newBuf.set(buf, result.length);
+    result = newBuf;
+  }
+  return result;
+}
+
+/**
+ * Parses a list of strings
+ *
+ * @param {reader.Reader} rd Source
+ *
+ * @returns {Array(String)} A list of string
+ *
+ */
+export async function parseStrings(rd) {
+  let total = new integer.Integer(0);
+  let items = [];
+  await total.unmarshall(rd);
+  for (let i = 0; i < total.value(); i++) {
+    items.push(await String.read(rd));
+  }
+  return items;
+}
+
+/**
+ * Converts Uint8Array to string
+ *
+ * @param {Uint8Array} a Data to decode
+ * @param {string} label Decode label
+ *
+ * @returns {string} Decoded string
+ *
+ */
+export function toString(a, label) {
+  return new TextDecoder(label).decode(a);
+}
+
+/**
+ * Converts Uint8Array to string
+ *
+ * @param {string} a string to encode
+ *
+ * @returns {Uint8Array} Encoded string
+ *
+ */
+export function fromString(a) {
+  return new TextEncoder().encode(a);
 }

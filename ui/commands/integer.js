@@ -47,11 +47,9 @@ export class Integer {
     if (this.num > MAX) {
       throw new Exception("Integer number cannot be greater than 0x3fff");
     }
-
     if (this.num <= integerValueCutter) {
       return new Uint8Array([this.num & integerValueCutter]);
     }
-
     return new Uint8Array([
       (this.num >> 7) | integerHasNextBit,
       this.num & integerValueCutter,
@@ -64,16 +62,13 @@ export class Integer {
    * @param {reader.Reader} rd Data reader
    *
    */
-  async unmarshal(rd) {
+  async unmarshall(rd) {
     for (let i = 0; i < MAX_BYTES; i++) {
       let r = await reader.readOne(rd);
-
       this.num |= r[0] & integerValueCutter;
-
       if ((integerHasNextBit & r[0]) == 0) {
         return;
       }
-
       this.num <<= 7;
     }
   }

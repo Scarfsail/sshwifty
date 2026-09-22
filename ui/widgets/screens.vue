@@ -30,20 +30,14 @@
       <h1 style="display: none">Main Interface</h1>
 
       <div
-        v-if="screenInfo.indicator.message.length > 0"
-        class="screen-error"
-        :class="'screen-error-level-' + screenInfo.indicator.level"
+        v-if="screenInfo.indicators.length() > 0"
+        class="screen-errors"
       >
-        {{ screenInfo.indicator.message }}
-
-        <button
-          v-if="screenInfo.indicator.level === 'error' && screenInfo.reconnect"
-          class="screen-error-reconnect"
-          :disabled="busy"
-          @click="reconnect(idx)"
-        >
-          Reconnect
-        </button>
+        <ScreenIndicator
+          v-for="(indicator, idx) in screenInfo.indicators.indicators"
+          :key="indicator.uid"
+          :indicator="indicator"
+        />
       </div>
 
       <div class="screen-screen">
@@ -51,15 +45,15 @@
           :is="getComponent(screenInfo.ui)"
           :active="screen === idx"
           :control="screenInfo.control"
-          :change="screenInfo.indicator"
+          :change="screenInfo.indicators"
           :toolbar="screenInfo.toolbar"
           :view-port="viewPort"
           :style="'background-color: ' + screenInfo.control.color()"
           class="screen-content"
-          @stopped="stopped(idx, $event)"
-          @warning="warning(idx, $event)"
-          @info="info(idx, $event)"
+          @indicated="indicated(idx, $event)"
+          @indicationDismissed="indicationDismissed(idx, $event)"
           @updated="updated(idx)"
+          @stopped="stopped(idx, $event)"
         ></component>
       </div>
     </div>
@@ -67,12 +61,14 @@
 </template>
 
 <script>
+import ScreenIndicator from "./screen_indicator.vue";
 import ConsoleScreen from "./screen_console.vue";
 
 import "./screens.css";
 
 export default {
   components: {
+    ScreenIndicator,
     ConsoleScreen,
   },
   props: {
@@ -88,35 +84,27 @@ export default {
       type: Object,
       default: () => {},
     },
-    busy: {
-      type: Boolean,
-      default: false,
-    },
   },
   methods: {
-    reconnect(index) {
-      this.$emit("reconnect", index);
-    },
     getComponent(ui) {
       switch (ui) {
         case "Console":
           return "ConsoleScreen";
-
         default:
           throw new Error("Unknown UI: " + ui);
       }
     },
-    stopped(index, stopErr) {
-      this.$emit("stopped", index, stopErr);
+    indicated(index, indicator) {
+      this.$emit("indicated", index, indicator);
     },
-    warning(index, msg) {
-      this.$emit("warning", index, msg);
-    },
-    info(index, msg) {
-      this.$emit("info", index, msg);
+    indicationDismissed(index, indicatorUID) {
+      this.$emit("indicationDismissed", index, indicatorUID);
     },
     updated(index) {
       this.$emit("updated", index);
+    },
+    stopped(index, reason) {
+      this.$emit("stopped", index, reason);
     },
   },
 };

@@ -54,9 +54,8 @@ type StreamHeader [2]byte
 
 // Stream header consts
 const (
-	StreamHeaderMaxLength = 0x1fff
-	StreamHeaderMaxMarker = 0x07
-
+	StreamHeaderMaxLength             = 0x1fff
+	StreamHeaderMaxMarker             = 0x07
 	streamHeaderLengthFirstByteCutter = 0x1f
 )
 
@@ -68,11 +67,9 @@ func (s StreamHeader) Marker() byte {
 // Length returns the data length of the stream
 func (s StreamHeader) Length() uint16 {
 	r := uint16(0)
-
 	r |= uint16(s[0] & streamHeaderLengthFirstByteCutter)
 	r <<= 8
 	r |= uint16(s[1])
-
 	return r
 }
 
@@ -81,11 +78,9 @@ func (s *StreamHeader) Set(marker byte, n uint16) {
 	if marker > StreamHeaderMaxMarker {
 		panic("marker must not be greater than 0x07")
 	}
-
 	if n > StreamHeaderMaxLength {
 		panic("n must not be greater than 0x1fff")
 	}
-
 	s[0] = (marker << 5) | byte((n>>8)&streamHeaderLengthFirstByteCutter)
 	s[1] = byte(n)
 }
@@ -121,17 +116,13 @@ func (s *streamInitialHeader) set(commandID byte, data uint16, success bool) {
 	if commandID > 0x0f {
 		panic("Command ID must not greater than 0x0f")
 	}
-
 	if data > 0x07ff {
 		panic("Data must not greater than 0x07ff")
 	}
-
 	dd := data & 0x07ff
-
 	if success {
 		dd |= 0x0800
 	}
-
 	(*s)[0] = 0
 	(*s)[0] |= commandID << 4
 	(*s)[0] |= byte(dd >> 8)
@@ -181,30 +172,17 @@ func newStreamResponder(w streamHandlerSender, h Header) StreamResponder {
 
 func (w StreamResponder) write(mk byte, b []byte, buf []byte) (int, error) {
 	bufLen := len(buf)
-	bLen := len(b)
-
-	if bLen > bufLen {
-		bLen = bufLen
-	}
-
-	if bLen > StreamHeaderMaxLength {
-		bLen = StreamHeaderMaxLength
-	}
-
+	bLen := min(len(b), bufLen, StreamHeaderMaxLength)
 	sHeaderStream := StreamHeader{}
 	sHeaderStream.Set(mk, uint16(bLen))
-
 	toWrite := copy(buf[3:], b)
 	buf[0] = byte(w.h)
 	buf[1] = sHeaderStream[0]
 	buf[2] = sHeaderStream[1]
-
 	_, wErr := w.w.Write(buf[:toWrite+3])
-
 	if wErr != nil {
 		return 0, wErr
 	}
-
 	return len(b), wErr
 }
 
@@ -219,55 +197,41 @@ func (w StreamResponder) Send(marker byte, data []byte, buf []byte) error {
 	if len(buf) <= w.HeaderSize() {
 		panic("The length of data buffer must be greater than 3")
 	}
-
 	dataLen := len(data)
 	start := 0
-
 	for {
 		wLen, wErr := w.write(marker, data[start:], buf)
-
 		start += wLen
-
 		if wErr != nil {
 			return wErr
 		}
-
 		if start < dataLen {
 			continue
 		}
-
 		return nil
 	}
 }
 
-// SendManual sends the data without automatical segmentation. It will construct
+// SendManual sends the data without automatic segmentation. It will construct
 // the data package directly using the given `data` buffer, that is, the first
 // n bytes of the given `data` will be used to setup headers. It is the caller's
-//
-//	responsibility to leave n bytes of space so no meaningful data will be over
-//
+// responsibility to leave n bytes of space so no meaningful data will be over
 // written. The number n can be acquired by calling .HeaderSize() method.
 func (w StreamResponder) SendManual(marker byte, data []byte) error {
 	dataLen := len(data)
-
 	if dataLen < w.HeaderSize() {
 		panic("The length of data buffer must be greater than the " +
 			"w.HeaderSize()")
 	}
-
 	if dataLen > StreamHeaderMaxLength {
 		panic("Data length must not greater than StreamHeaderMaxLength")
 	}
-
 	sHeaderStream := StreamHeader{}
 	sHeaderStream.Set(marker, uint16(dataLen-w.HeaderSize()))
-
 	data[0] = byte(w.h)
 	data[1] = sHeaderStream[0]
 	data[2] = sHeaderStream[1]
-
 	_, wErr := w.w.Write(data)
-
 	return wErr
 }
 
@@ -276,12 +240,9 @@ func (w StreamResponder) Signal(signal Header) error {
 	if !signal.IsStreamControl() {
 		panic("Only stream control signal is allowed")
 	}
-
 	sHeader := signal
 	sHeader.Set(w.h.Data())
-
 	_, wErr := w.w.Write([]byte{byte(sHeader)})
-
 	return wErr
 }
 
@@ -301,11 +262,9 @@ func newStream() stream {
 
 func newStreams() streams {
 	s := streams{}
-
 	for i := range s {
 		s[i] = newStream()
 	}
-
 	return s
 }
 
@@ -313,22 +272,18 @@ func (c *streams) get(id byte) (*stream, error) {
 	if id > HeaderMaxData {
 		return nil, ErrStreamsInvalidStreamID
 	}
-
 	return &(*c)[id], nil
 }
 
 func (c *streams) shutdown() {
 	cc := *c
-
 	for i := range cc {
 		if !cc[i].running() {
 			continue
 		}
-
 		if !cc[i].closed {
 			cc[i].close()
 		}
-
 		cc[i].release()
 	}
 }
@@ -349,59 +304,41 @@ func (c *stream) reinit(
 	b []byte,
 ) error {
 	hd := streamInitialHeader{}
-
 	_, rErr := io.ReadFull(r, hd[:])
-
 	if rErr != nil {
 		return rErr
 	}
-
 	l = l.TitledContext("Command (%d)", hd.command())
-
 	ccc, cccErr := cc.Run(
 		hd.command(), l, hooks, newStreamResponder(w, h), cfg, bufferPool)
-
 	if cccErr != nil {
 		hd.set(0, uint16(StreamErrorCommandUndefined), false)
 		hd.signal(w.handlerSender, h, b)
-
 		l.Warning("Trying to execute an unknown command %d", hd.command())
-
 		return nil
 	}
-
 	signaller := StreamInitialSignalSender{
 		w:     w.handlerSender,
 		hd:    h,
 		cmdID: hd.command(),
 		buf:   b,
 	}
-
 	rr := rw.NewLimitedReader(r, int(hd.data()))
 	defer rr.Ditch(b)
-
 	bootErr := ccc.bootup(&rr, b)
-
 	if !bootErr.Succeed() {
 		l.Warning("Unable to start command %d due to error: %s",
 			hd.command(), bootErr.Error())
-
 		signaller.Signal(bootErr.code, false)
-
 		return nil
 	}
-
 	c.f = ccc
 	c.closed = false
-
 	sErr := signaller.Signal(bootErr.code, true)
-
 	if sErr != nil {
 		return sErr
 	}
-
 	l.Debug("Started")
-
 	return nil
 }
 
@@ -413,18 +350,13 @@ func (c *stream) tick(
 	if !c.f.running() {
 		return ErrStreamsStreamOperateInactiveStream
 	}
-
 	hd := StreamHeader{}
-
 	_, rErr := io.ReadFull(r, hd[:])
-
 	if rErr != nil {
 		return rErr
 	}
-
 	rr := rw.NewLimitedReader(r, int(hd.Length()))
 	defer rr.Ditch(b)
-
 	return c.f.tick(&rr, hd, b)
 }
 
@@ -432,11 +364,9 @@ func (c *stream) close() error {
 	if !c.f.running() {
 		return ErrStreamsStreamClosingInactiveStream
 	}
-
 	// Set a marker so streams.shutdown won't call it. Stream can call it
 	// however they want, though that may cause error that disconnects.
 	c.closed = true
-
 	return c.f.close()
 }
 
@@ -444,6 +374,5 @@ func (c *stream) release() error {
 	if !c.f.running() {
 		return ErrStreamsStreamReleasingInactiveStream
 	}
-
 	return c.f.release()
 }
