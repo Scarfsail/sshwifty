@@ -300,12 +300,11 @@ export default {
       }
 
       // The window has been dismissed while a reconnect was still pending or
-      // running. Give up the reconnect and release the guard, keeping the
-      // dead tab as it is so it can be retried. Clearing the ID first makes
-      // both the wizard's own late cancellation callback and a still
-      // in-flight stream acquisition no-ops, since neither owns it any more
-      this.connector.reconnectTabID = null;
-      this.connector.inputting = false;
+      // running. Give it up, keeping the dead tab as it is so it can be
+      // retried. Dropping the claim makes both the wizard's own late
+      // cancellation callback and a still in-flight stream acquisition
+      // no-ops, since neither owns the reconnect any more
+      this.reconnectGiveUp(this.connector.reconnectTabID);
     },
     showTabsWindow() {
       this.closeAllWindow();
@@ -639,6 +638,14 @@ export default {
 
       this.connector.reconnectTabID = null;
       this.connector.inputting = false;
+
+      // Stop the wizard right here instead of leaving it to the <connector>
+      // unmount, which only happens on the next render tick: a wizard that
+      // succeeded in between would arrive at connectionSucceed with nothing
+      // left to say it was given up, and land as a brand new tab
+      if (this.connector.connector && this.connector.connector.wizard) {
+        this.connector.connector.wizard.close();
+      }
     },
     reconnectFailed(reconnectTabID, data) {
       const index = this.tabIndexByID(reconnectTabID);
@@ -694,16 +701,24 @@ export default {
       if (replaceIndex >= 0) {
         const replaced = this.tab.tabs[replaceIndex];
 
-        // The replaced session is normally already finished, but the error
-        // indicator is raised by any failure of the screen's read loop, not
-        // only by a remote termination. Shut it down the same way closeTab
-        // does, so a still-running backend session is never orphaned
-        try {
-          replaced.control.disabled();
+        // The error indicator is raised by any failure of the screen's read
+        // loop, not only by a remote termination, so the replaced session
+        // can still be running. Shut that one down the way closeTab does,
+        // to not orphan it.
+        //
+        // A session that did finish must not be closed again: its stream has
+        // already been returned to the pool and the new session has most
+        // likely been given the very same stream ID, so the close signal -
+        // which the old control still sends, stamped with that ID - would
+        // terminate the connection just established
+        if (!replaced.control.closed) {
+          try {
+            replaced.control.disabled();
 
-          await replaced.control.close();
-        } catch (e) {
-          process.env.NODE_ENV === "development" && console.trace(e);
+            await replaced.control.close();
+          } catch (e) {
+            process.env.NODE_ENV === "development" && console.trace(e);
+          }
         }
 
         this.tab.tabs.splice(replaceIndex, 1, newTab);

@@ -193,6 +193,7 @@ export function build(ctx) {
       outboundHistory.expire();
 
       ctx.connector.inputting = false;
+      ctx.connector.reconnectTabID = null;
 
       if (e === null) {
         this.message = "";
@@ -212,6 +213,7 @@ export function build(ctx) {
       isClosed = true;
 
       ctx.connector.inputting = false;
+      ctx.connector.reconnectTabID = null;
 
       if (e.code) {
         this.message = "E" + e.code;
