@@ -30,7 +30,7 @@
     <span
       :id="id + '-close'"
       class="window-close icon icon-close1"
-      @click="hide"
+      @click="close"
     />
   </div>
 </template>
@@ -71,6 +71,14 @@ export default {
       this.displaying = false;
 
       this.$emit("display", this.displaying);
+    },
+    // close is the dismissal by the window's own close control. It is kept
+    // apart from hide because hide also runs when the window is simply
+    // replaced by another one, which is not the user giving up on it
+    close() {
+      this.hide();
+
+      this.$emit("close");
     },
   },
 };

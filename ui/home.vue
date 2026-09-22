@@ -105,7 +105,8 @@
       :knowns-export="exportKnowns"
       :knowns-import="importKnowns"
       :busy="connector.busy"
-      @display="connectWindowDisplay"
+      @display="windows.connect = $event"
+      @close="connectWindowClosed"
       @connector-select="connectNew"
       @known-select="connectKnown"
       @known-remove="removeKnown"
@@ -285,18 +286,16 @@ export default {
       this.closeAllWindow();
       this.windows.connect = true;
     },
-    connectWindowDisplay(displaying) {
-      this.windows.connect = displaying;
-
-      if (displaying || this.connector.reconnectTabID === null) {
+    connectWindowClosed() {
+      if (this.connector.reconnectTabID === null) {
         return;
       }
 
-      // The window has been dismissed while a reconnect wizard was still
+      // The window has been dismissed while a reconnect was still pending or
       // running. Give up the reconnect and release the guard, keeping the
       // dead tab as it is so it can be retried. Clearing the ID first makes
-      // the wizard's own late cancellation callback a no-op, since it no
-      // longer owns the reconnect
+      // both the wizard's own late cancellation callback and a still
+      // in-flight stream acquisition no-ops, since neither owns it any more
       this.connector.reconnectTabID = null;
       this.connector.inputting = false;
     },
@@ -329,23 +328,36 @@ export default {
         alert(errStr);
       }
     },
-    runConnect(callback) {
+    // runConnect hands a backend stream to callback. When no stream can be
+    // delivered - the connector is already taken, or the backend cannot be
+    // reached - failed is called instead, so the caller can undo whatever it
+    // set up in anticipation
+    runConnect(callback, failed = () => {}) {
       if (this.connector.acquired) {
+        failed();
+
         return;
       }
 
       this.connector.acquired = true;
       this.connector.busy = true;
 
+      let delivered = false;
+
       this.getStreamThenRun(
         (stream) => {
           this.connector.busy = false;
+          delivered = true;
 
           callback(stream);
         },
         () => {
           this.connector.busy = false;
           this.connector.acquired = false;
+
+          if (!delivered) {
+            failed();
+          }
         },
       );
     },
@@ -550,54 +562,71 @@ export default {
 
       this.showConnectWindow();
 
-      this.runConnect((stream) => {
-        // Claim the tab only once the backend stream is in hand. runConnect
-        // silently does nothing when it cannot deliver one (the socket is
-        // unreachable, or another connect already holds it), and an ID left
-        // set here would make the next successful connect of any kind
-        // replace this tab instead of opening its own
-        self.connector.reconnectTabID = reconnectTabID;
+      // Claim the tab now rather than once the stream arrives: getting the
+      // stream can await a re-dial of the backend socket, and closing the
+      // window during that wait has to be able to call the reconnect off
+      this.connector.reconnectTabID = reconnectTabID;
 
-        let connector = self.getConnectorByType(known.type);
+      this.runConnect(
+        (stream) => {
+          if (self.connector.reconnectTabID !== reconnectTabID) {
+            return;
+          }
 
-        if (!connector) {
-          alert("Unknown connector: " + known.type);
+          let connector = self.getConnectorByType(known.type);
 
-          self.connector.reconnectTabID = null;
-          self.connector.inputting = false;
+          if (!connector) {
+            alert("Unknown connector: " + known.type);
 
-          return;
-        }
+            self.reconnectGiveUp(reconnectTabID);
 
-        self.connector.connector = {
-          id: connector.id(),
-          name: connector.name(),
-          description: connector.description(),
-          wizard: connector.execute(
-            stream,
-            self.controls,
-            self.connector.historyRec,
-            known.data,
-            known.session,
-            known.keptSessions,
-            (n) => {
-              self.connector.knowns = self.connector.historyRec.all();
+            return;
+          }
 
-              if (self.connector.reconnectTabID !== reconnectTabID) {
-                return;
-              }
+          self.connector.connector = {
+            id: connector.id(),
+            name: connector.name(),
+            description: connector.description(),
+            wizard: connector.execute(
+              stream,
+              self.controls,
+              self.connector.historyRec,
+              known.data,
+              known.session,
+              known.keptSessions,
+              (n) => {
+                self.connector.knowns = self.connector.historyRec.all();
 
-              if (n.data().success) {
-                return;
-              }
+                if (self.connector.reconnectTabID !== reconnectTabID) {
+                  return;
+                }
 
-              self.reconnectFailed(reconnectTabID, n.data());
-            },
-          ),
-        };
+                if (n.data().success) {
+                  return;
+                }
 
-        self.connector.inputting = true;
-      });
+                self.reconnectFailed(reconnectTabID, n.data());
+              },
+            ),
+          };
+
+          self.connector.inputting = true;
+        },
+        () => {
+          // No stream was delivered, so no wizard will ever run. Drop the
+          // claim, otherwise the next successful connect of any kind would
+          // replace this tab instead of opening its own
+          self.reconnectGiveUp(reconnectTabID);
+        },
+      );
+    },
+    reconnectGiveUp(reconnectTabID) {
+      if (this.connector.reconnectTabID !== reconnectTabID) {
+        return;
+      }
+
+      this.connector.reconnectTabID = null;
+      this.connector.inputting = false;
     },
     reconnectFailed(reconnectTabID, data) {
       const index = this.tabIndexByID(reconnectTabID);
