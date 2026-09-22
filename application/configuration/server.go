@@ -32,6 +32,7 @@ type Server struct {
 	ReadTimeout           time.Duration
 	WriteTimeout          time.Duration
 	HeartbeatTimeout      time.Duration
+	PingInterval          time.Duration
 	ReadDelay             time.Duration
 	WriteDelay            time.Duration
 	TLSCertificateFile    string
@@ -104,6 +105,11 @@ func (s Server) normalize() Server {
 		time.Duration(float64(readTimeout)*maxHeartbeatTimeoutProportion),
 		serverMinValidSecond,
 	)
+	pingInterval := clampRange(
+		setZeroUintToDefault(s.PingInterval, readTimeout/2),
+		time.Duration(float64(readTimeout)*maxHeartbeatTimeoutProportion),
+		serverMinValidSecond,
+	)
 	return Server{
 		ListenInterface:       s.defaultListenInterface(),
 		ListenPort:            s.defaultListenPort(),
@@ -111,6 +117,7 @@ func (s Server) normalize() Server {
 		ReadTimeout:           readTimeout,
 		WriteTimeout:          writeTimeout,
 		HeartbeatTimeout:      heartbeatTimeout,
+		PingInterval:          pingInterval,
 		ReadDelay:             atLeast(s.ReadDelay, 0),  // No less than 0
 		WriteDelay:            atLeast(s.WriteDelay, 0), // No less than 0
 		TLSCertificateFile:    s.TLSCertificateFile,

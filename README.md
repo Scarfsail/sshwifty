@@ -264,6 +264,14 @@ Here is all the options of the configuration file:
       // (In Seconds)
       "HeartbeatTimeout": 10,
 
+      // The interval between server-sent Websocket Ping frames, which keeps
+      // the connection alive even when the client page is not running.
+      // Set to 0 to use a derived default (Half of the ReadTimeout).
+      // The given value will be reduced when it's greater than 70% of the
+      // ReadTimeout, since a Ping must be answered within every read window
+      // (In Seconds)
+      "PingInterval": 0,
+
       // Forced delay between each request
       // (In Milliseconds)
       "ReadDelay": 10,
@@ -419,6 +427,7 @@ SSHWIFTY_INITIALTIMEOUT
 SSHWIFTY_READTIMEOUT
 SSHWIFTY_WRITETIMEOUT
 SSHWIFTY_HEARTBEATTIMEOUT
+SSHWIFTY_PINGINTERVAL
 SSHWIFTY_READDELAY
 SSHWIFTY_WRITEELAY
 SSHWIFTY_LISTENINTERFACE
@@ -462,6 +471,7 @@ SSHWIFTY_INITIALTIMEOUT
 SSHWIFTY_READTIMEOUT
 SSHWIFTY_WRITETIMEOUT
 SSHWIFTY_HEARTBEATTIMEOUT
+SSHWIFTY_PINGINTERVAL
 SSHWIFTY_READDELAY
 SSHWIFTY_WRITEELAY
 ```
