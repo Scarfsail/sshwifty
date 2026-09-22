@@ -83,8 +83,6 @@
 <script>
 import "./connect.css";
 
-import { hasKnowns } from "./connect_knowns.js";
-
 import Window from "./window.vue";
 import ConnectSwitch from "./connect_switch.vue";
 import ConnectKnown from "./connect_known.vue";
@@ -141,27 +139,18 @@ export default {
   },
   data() {
     return {
-      tab: this.defaultTab(),
+      // Reconnecting to a remote used before is the common case, so the
+      // known remotes are what the window opens on whenever there are any
+      tab:
+        this.restrictedToPresets ||
+        this.knowns.length > 0 ||
+        this.presets.length > 0
+          ? "known"
+          : "new",
       canSelect: true,
     };
   },
   methods: {
-    // defaultTab must be a method rather than a computed: Vue 2 initializes
-    // methods before data, computed only after it
-    defaultTab(requested = null) {
-      return (
-        requested ||
-        (hasKnowns(this.knowns, this.presets, this.restrictedToPresets)
-          ? "known"
-          : "new")
-      );
-    },
-    // resetTab is called by the opener every time the window is shown. The
-    // component is never destroyed, so without it the tab would stick at
-    // whatever the user last switched to
-    resetTab(requested = null) {
-      this.tab = this.defaultTab(requested);
-    },
     switchTab(to) {
       if (this.inputting) {
         return;

@@ -18,7 +18,7 @@
 -->
 
 <template>
-  <div class="connect-new">
+  <div id="connect-new">
     <ul class="lst1 lst-nostyle">
       <li
         v-for="(connector, ck) in connectors"

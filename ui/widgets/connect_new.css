@@ -19,32 +19,32 @@
 
 @charset "utf-8";
 
-.connect-new {
+#connect-new {
   min-height: 200px;
   background: #3a3a3a;
   font-size: 0.75em;
   padding: 15px;
 }
 
-.connect-new .lst1 > li .lst-wrap:hover {
+#connect-new li .lst-wrap:hover {
   background: #544;
 }
 
-.connect-new .lst1 > li .lst-wrap:active {
+#connect-new li .lst-wrap:active {
   background: #444;
 }
 
-.connect-new .lst1 > li .lst-wrap {
+#connect-new li .lst-wrap {
   cursor: pointer;
   color: #aaa;
   padding: 15px;
 }
 
-.connect-new li h2 {
+#connect-new li h2 {
   color: #e9a;
 }
 
-.connect-new li h2::before {
+#connect-new li h2::before {
   content: ">";
   margin: 0 5px 0 0;
   color: #555;
@@ -52,7 +52,7 @@
   transition: ease 0.3s margin;
 }
 
-.connect-new li .lst-wrap:hover h2::before {
+#connect-new li .lst-wrap:hover h2::before {
   content: ">";
   margin: 0 3px 0 2px;
 }

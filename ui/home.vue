@@ -41,7 +41,7 @@
           working: connector.inputting,
           intensify: connector.inputting && !windows.connect,
         }"
-        @click="showConnectWindow()"
+        @click="showConnectWindow"
       ></a>
 
       <tabs
@@ -67,39 +67,23 @@
       @updated="tabUpdated"
       @stopped="tabStopped"
     >
-      <div id="home-content-wrap" class="wide">
+      <div id="home-content-wrap">
         <h1>Hi, this is Sshwifty</h1>
 
-        <!-- Hidden while a wizard is running, the same way connect.vue
-             hides its own lists. Leaving them reachable would let a second
-             connection replace the one being set up -->
-        <template v-if="!connector.inputting">
-          <connect-known
-            v-if="hasKnowns()"
-            :presets="presets"
-            :restricted-to-presets="restrictedToPresets"
-            :knowns="connector.knowns"
-            :launcher-builder="buildknownLauncher"
-            :knowns-export="exportKnowns"
-            :knowns-import="importKnowns"
-            @select="connectKnown"
-            @select-preset="connectPreset"
-            @remove="removeKnown"
-            @clear-session="clearSessionKnown"
-          ></connect-known>
+        <p>
+          An Open Source Web SSH Client that enables you to connect to SSH
+          servers without downloading any additional software.
+        </p>
 
-          <connect-new
-            v-else
-            :connectors="connector.connectors"
-            @select="connectNew"
-          ></connect-new>
-
-          <p v-if="!restrictedToPresets" id="home-content-new">
-            <a href="javascript:;" @click="showConnectWindow('new')"
-              >New remote</a
-            >
-          </p>
-        </template>
+        <p>
+          To get started, click the
+          <span
+            id="home-content-connect"
+            class="icon icon-plus1"
+            @click="showConnectWindow"
+          ></span>
+          icon near the top left corner.
+        </p>
 
         <div v-if="serverMessage.length > 0">
           <hr />
@@ -109,7 +93,6 @@
     </screens>
 
     <connect-widget
-      ref="connectWidget"
       :inputting="connector.inputting"
       :display="windows.connect"
       :connectors="connector.connectors"
@@ -158,8 +141,6 @@
 import "./home.css";
 
 import ConnectWidget from "./widgets/connect.vue";
-import ConnectKnown from "./widgets/connect_known.vue";
-import ConnectNew from "./widgets/connect_new.vue";
 import StatusWidget from "./widgets/status.vue";
 import Connector from "./widgets/connector.vue";
 import Tabs from "./widgets/tabs.vue";
@@ -176,8 +157,6 @@ import * as home_history from "./home_historyctl.js";
 
 import * as presets from "./commands/presets.js";
 
-import { hasKnowns } from "./widgets/connect_knowns.js";
-
 const BACKEND_CONNECT_ERROR =
   "Unable to connect to the Sshwifty backend server: ";
 const BACKEND_REQUEST_ERROR = "Unable to perform request: ";
@@ -188,8 +167,6 @@ const INDICATOR_RECONNECT_FAILED = "RECONNECT_FAILED";
 export default {
   components: {
     "connect-widget": ConnectWidget,
-    "connect-known": ConnectKnown,
-    "connect-new": ConnectNew,
     "status-widget": StatusWidget,
     connector: Connector,
     tabs: Tabs,
@@ -281,6 +258,10 @@ export default {
         }
         this.$emit("navigate-to", "");
       });
+    } else {
+      // Landing on an empty page, the next thing to do is always to pick a
+      // remote, so open the window as though the + button had been clicked
+      this.showConnectWindow();
     }
     window.addEventListener("beforeunload", this.onBrowserClose);
   },
@@ -314,23 +295,9 @@ export default {
       this.closeAllWindow();
       this.windows.delay = true;
     },
-    // hasKnowns exposes the predicate to the template, which cannot reach a
-    // bare import
-    hasKnowns() {
-      return hasKnowns(
-        this.connector.knowns,
-        this.presets,
-        this.restrictedToPresets,
-      );
-    },
-    // tab names the view the window should open on, or null to let the
-    // widget pick. The reset is a direct call rather than a prop because
-    // closeAllWindow and the reopen coalesce into no prop change at all when
-    // the window is already open, which would drop the request
-    showConnectWindow(tab = null) {
+    showConnectWindow() {
       this.closeAllWindow();
       this.windows.connect = true;
-      this.$refs.connectWidget.resetTab(tab);
     },
     connectWindowClosed() {
       if (this.connector.reconnectTabID === null) {
@@ -401,8 +368,6 @@ export default {
       );
     },
     connectNew(connector) {
-      this.showConnectWindow();
-
       const self = this;
       self.runConnect((stream) => {
         self.connector.connector = {
@@ -423,8 +388,6 @@ export default {
       });
     },
     connectPreset(preset) {
-      this.showConnectWindow();
-
       const self = this;
       self.runConnect((stream) => {
         self.connector.connector = {
@@ -455,8 +418,6 @@ export default {
       return connector;
     },
     connectKnown(known) {
-      this.showConnectWindow();
-
       const self = this;
       self.runConnect((stream) => {
         let connector = self.getConnectorByType(known.type);
