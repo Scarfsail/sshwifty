@@ -48,6 +48,7 @@
           :change="screenInfo.indicators"
           :toolbar="screenInfo.toolbar"
           :view-port="viewPort"
+          :bypass-clipboard-write-approval="bypassClipboardWriteApproval"
           :style="'background-color: ' + screenInfo.control.color()"
           class="screen-content"
           @indicated="indicated(idx, $event)"
@@ -83,6 +84,10 @@ export default {
     viewPort: {
       type: Object,
       default: () => {},
+    },
+    bypassClipboardWriteApproval: {
+      type: Boolean,
+      default: false,
     },
   },
   methods: {

@@ -57,5 +57,6 @@
       }
     }
   ],
-  "OnlyAllowPresetRemotes": false
+  "OnlyAllowPresetRemotes": false,
+  "BypassClipboardWriteApproval": false
 }

@@ -52,6 +52,7 @@ const mainTemplate = `
   :server-message="serverMessage"
   :preset-data="presetData.presets"
   :restricted-to-presets="presetData.restricted"
+  :bypass-clipboard-write-approval="bypassClipboardWriteApproval"
   :view-port="viewPort"
   @navigate-to="changeURLHash"
   @tab-opened="tabOpened"
@@ -116,6 +117,7 @@ function startApp(rootEl) {
           presets: new Presets([]),
           restricted: false,
         },
+        bypassClipboardWriteApproval: false,
         authErr: "",
         loadErr: "",
         socket: null,
@@ -242,6 +244,8 @@ function startApp(rootEl) {
           presets: new Presets(authData.presets ? authData.presets : []),
           restricted: authResult.onlyAllowPresetRemotes,
         };
+        this.bypassClipboardWriteApproval =
+          authData.bypass_clipboard_write_approval === true;
         this.socket = this.buildSocket(
           key,
           authResult.timeout,

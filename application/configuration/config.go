@@ -27,17 +27,18 @@ import (
 
 // Configuration contains configuration of the application
 type Configuration struct {
-	HostName               string
-	SharedKey              string
-	DialTimeout            time.Duration
-	Socks5                 string
-	Socks5User             string
-	Socks5Password         string
-	Hooks                  Hooks
-	HookTimeout            time.Duration
-	Servers                []Server
-	Presets                []Preset
-	OnlyAllowPresetRemotes bool
+	HostName                     string
+	SharedKey                    string
+	DialTimeout                  time.Duration
+	Socks5                       string
+	Socks5User                   string
+	Socks5Password               string
+	Hooks                        Hooks
+	HookTimeout                  time.Duration
+	Servers                      []Server
+	Presets                      []Preset
+	OnlyAllowPresetRemotes       bool
+	BypassClipboardWriteApproval bool
 }
 
 // Verify verifies current setting
@@ -88,13 +89,14 @@ func (c Configuration) hookSettings() HookSettings {
 // Common returns common settings
 func (c Configuration) Common() Common {
 	return Common{
-		HostName:               c.HostName,
-		SharedKey:              c.SharedKey,
-		Dialer:                 c.Dialer(),
-		DialTimeout:            c.DialTimeout,
-		Presets:                c.Presets,
-		Hooks:                  c.hookSettings(),
-		OnlyAllowPresetRemotes: c.OnlyAllowPresetRemotes,
+		HostName:                     c.HostName,
+		SharedKey:                    c.SharedKey,
+		Dialer:                       c.Dialer(),
+		DialTimeout:                  c.DialTimeout,
+		Presets:                      c.Presets,
+		Hooks:                        c.hookSettings(),
+		OnlyAllowPresetRemotes:       c.OnlyAllowPresetRemotes,
+		BypassClipboardWriteApproval: c.BypassClipboardWriteApproval,
 	}
 }
 

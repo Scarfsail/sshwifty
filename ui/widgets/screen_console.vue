@@ -158,11 +158,12 @@ const termClipboardAlwaysWriteWarning = "Clipboard requests from the remote " +
   "is always accepted into the clipboard of your system";
 
 class CustomClipboardProvider {
-  constructor(indicatorMsg) {
+  constructor(indicatorMsg, bypassClipboardWriteApproval) {
     this.cached = "";
     this.alwaysAllowed = false;
     this.indicatorShown = false;
     this.indicatorMsg = indicatorMsg;
+    this.bypassClipboardWriteApproval = !!bypassClipboardWriteApproval;
   }
 
   readText(selection) {
@@ -281,7 +282,7 @@ class CustomClipboardProvider {
   }
 
   writeText(selection, text) {
-    if (this.alwaysAllowed) {
+    if (this.bypassClipboardWriteApproval || this.alwaysAllowed) {
       return this.writeTextToSysClipboard(text);
     }
     return this.writeTextToMemClipboard(text);
@@ -289,10 +290,11 @@ class CustomClipboardProvider {
 }
 
 class Term {
-  constructor(control, indicatorMsg) {
+  constructor(control, bypassClipboardWriteApproval) {
     const resizeDelayInterval = 500;
 
     this.control = control;
+    this.bypassClipboardWriteApproval = !!bypassClipboardWriteApproval;
     this.closed = false;
     this.fontSize = termDefaultFontSize;
     this.term = new Terminal({
@@ -431,7 +433,10 @@ class Term {
     this.term.loadAddon(
       new ClipboardAddon(
         new ClipboardBase64(),
-        new CustomClipboardProvider(indicatorMsg),
+        new CustomClipboardProvider(
+          indicatorMsg,
+          this.bypassClipboardWriteApproval,
+        ),
       )
     );
     try {
@@ -582,11 +587,15 @@ export default {
       type: Object,
       default: () => null,
     },
+    bypassClipboardWriteApproval: {
+      type: Boolean,
+      default: false,
+    },
   },
   data() {
     return {
       screenKeys: consoleScreenKeys,
-      term: new Term(this.control),
+      term: new Term(this.control, this.bypassClipboardWriteApproval),
       typefaces: termTypeFaces,
       runner: null,
       eventHandlers: {

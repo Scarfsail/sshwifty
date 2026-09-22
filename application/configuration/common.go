@@ -25,11 +25,12 @@ import (
 
 // Common settings shared by multiple servers
 type Common struct {
-	HostName               string
-	SharedKey              string
-	Dialer                 network.Dial
-	DialTimeout            time.Duration
-	Presets                []Preset
-	Hooks                  HookSettings
-	OnlyAllowPresetRemotes bool
+	HostName                     string
+	SharedKey                    string
+	Dialer                       network.Dial
+	DialTimeout                  time.Duration
+	Presets                      []Preset
+	Hooks                        HookSettings
+	OnlyAllowPresetRemotes       bool
+	BypassClipboardWriteApproval bool
 }

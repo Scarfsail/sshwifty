@@ -158,6 +158,10 @@ type commonInput struct {
 
 	// Allow predefined remotes only
 	OnlyAllowPresetRemotes bool
+
+	// Allow trusted remotes to write to the system clipboard without
+	// requiring the user approval prompt
+	BypassClipboardWriteApproval bool
 }
 
 // concretize creates Configuration based on current commonInput
@@ -188,8 +192,9 @@ func (f commonInput) concretize() (Configuration, error) {
 			f.HookTimeout,
 			1,
 		)) * time.Second,
-		Servers:                servers,
-		Presets:                presets,
-		OnlyAllowPresetRemotes: f.OnlyAllowPresetRemotes,
+		Servers:                      servers,
+		Presets:                      presets,
+		OnlyAllowPresetRemotes:       f.OnlyAllowPresetRemotes,
+		BypassClipboardWriteApproval: f.BypassClipboardWriteApproval,
 	}, nil
 }
