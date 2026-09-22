@@ -62,6 +62,7 @@
       :screen="tab.current"
       :screens="tab.tabs"
       :view-port="viewPort"
+      :bypass-clipboard-write-approval="bypassClipboardWriteApproval"
       @indicated="tabIndicate"
       @indicationDismissed="tabDismissIndicator"
       @updated="tabUpdated"
@@ -203,6 +204,10 @@ export default {
       default: () => new presets.Presets([]),
     },
     restrictedToPresets: {
+      type: Boolean,
+      default: () => false,
+    },
+    bypassClipboardWriteApproval: {
       type: Boolean,
       default: () => false,
     },

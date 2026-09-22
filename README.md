@@ -402,9 +402,42 @@ Here is all the options of the configuration file:
   // NOTICE: You can only configure OnlyAllowPresetRemotes through a config
   //         file. This option is not supported when you are configuring with
   //         environment variables
-  "OnlyAllowPresetRemotes": false
+  "OnlyAllowPresetRemotes": false,
+
+  // Allow trusted remote terminal output (OSC 52) to write straight to the
+  // browser clipboard without going through Sshwifty's clipboard write
+  // approval bar. Defaults to false.
+  //
+  // WARNING: Enabling this means Sshwifty will trust ANY remote terminal
+  //          output to overwrite the local clipboard without asking the
+  //          user for permission first. Only enable this for trusted or
+  //          self-hosted deployments where remote hosts are not expected
+  //          to send malicious OSC 52 sequences. This does not, and
+  //          cannot, bypass the browser's own native clipboard security
+  //          requirements (such as requiring a secure context or a user
+  //          gesture).
+  //
+  // NOTICE: You can only configure BypassClipboardWriteApproval through a
+  //         config file. This option is not supported when you are
+  //         configuring with environment variables
+  "BypassClipboardWriteApproval": false
 }
 ```
+
+Example of enabling it:
+
+```json
+{
+  "BypassClipboardWriteApproval": true,
+  "Servers": [
+    { "ListenInterface": "0.0.0.0", "ListenPort": 8182 }
+  ]
+}
+```
+
+With this setting enabled, remote OSC 52 output is trusted to write to the
+browser clipboard without Sshwifty's approval bar. Browser-native clipboard
+security still applies.
 
 `sshwifty.conf.example.json` is an example of a valid configuration file, you
 can make your own customization base on it.
