@@ -699,7 +699,8 @@ export default {
       };
 
       if (replaceIndex >= 0) {
-        const replaced = this.tab.tabs[replaceIndex];
+        const replaced = this.tab.tabs[replaceIndex],
+          replacedID = replaced.id;
 
         // The error indicator is raised by any failure of the screen's read
         // loop, not only by a remote termination, so the replaced session
@@ -721,11 +722,20 @@ export default {
           }
         }
 
-        this.tab.tabs.splice(replaceIndex, 1, newTab);
+        // Shutting the old session down is awaited, and by then the user may
+        // have closed its tab, shifting everything after it. Resolve the
+        // target again instead of trusting the index taken before the wait,
+        // and fall back to appending when it is gone, rather than pushing
+        // the new session into whichever tab now sits at that index
+        const replaceAt = this.tabIndexByID(replacedID);
 
-        await this.switchTab(replaceIndex);
+        if (replaceAt >= 0) {
+          this.tab.tabs.splice(replaceAt, 1, newTab);
 
-        return;
+          await this.switchTab(replaceAt);
+
+          return;
+        }
       }
 
       await this.switchTab(this.tab.tabs.push(newTab) - 1);
