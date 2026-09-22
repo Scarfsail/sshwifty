@@ -371,9 +371,9 @@ Here is all the options of the configuration file:
         // of a Key file
         "Private Key": "file:///home/user/.ssh/private_key",
 
-        // Data for predefined Authentication field. Valid values is what
-        // displayed on the page (Password, Private Key, None)
-        "Authentication": "Password",
+        // Data for predefined Authentication field, separated by `,` symbol.
+        // Valid values are: Private Key, Password, Keyboard Interactive
+        "Authentication": "Private Key,Password,Keyboard Interactive",
 
         // Data for server public key fingerprint. You can acquire the value of
         // the fingerprint by manually connect to a new SSH host with Sshwifty,
@@ -539,6 +539,8 @@ computer console.
   fix
 - Thanks to [ZStrikeGit](https://github.com/ZStrikeGit) for the grammar and 
   formatting fixes
+- Thanks to [Scarfsai](https://github.com/Scarfsai) for enabling supports to
+  `xterm-256color` and `@xterm/addon-clipboard`
 
 ## License
 

@@ -25,29 +25,21 @@ import (
 func testString(t *testing.T, str []byte) {
 	ss := NewString(str)
 	mm := make([]byte, len(str)+2)
-
 	mLen, mErr := ss.Marshal(mm)
-
 	if mErr != nil {
 		t.Error("Failed to marshal:", mErr)
-
 		return
 	}
-
 	buf := make([]byte, mLen)
 	source := bytes.NewBuffer(mm[:mLen])
-	result, rErr := ParseString(source.Read, buf)
-
+	result, _, rErr := ParseString(source.Read, buf)
 	if rErr != nil {
 		t.Error("Failed to parse:", rErr)
-
 		return
 	}
-
 	if !bytes.Equal(result.Data(), ss.Data()) {
 		t.Errorf("Expecting the data to be %d, got %d instead",
 			ss.Data(), result.Data())
-
 		return
 	}
 }
@@ -56,7 +48,6 @@ func TestString(t *testing.T) {
 	testString(t, []byte{
 		'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'j', 'i',
 	})
-
 	testString(t, []byte{
 		'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'j', 'i',
 		'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'j', 'i',
@@ -80,4 +71,33 @@ func TestString(t *testing.T) {
 		'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'j', 'i',
 		'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'j', 'i',
 	})
+}
+
+func TestStrings(t *testing.T) {
+	b1 := make([]byte, 1024)
+	b2 := make([]byte, 1024)
+	sample := []string{"ABC", "123"}
+	size, err := MarshalStrings(sample, b1)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	data := bytes.NewReader(b1[:size])
+	parsed, _, err := ParseStrings(data.Read, b2)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	for i := range parsed {
+		if bytes.Equal(parsed[i].data, []byte(sample[i])) {
+			continue
+		}
+		t.Errorf(
+			"Expecting the data at %d to be %d, got %d instead",
+			i,
+			[]byte(sample[i]),
+			parsed[i].data,
+		)
+		return
+	}
 }

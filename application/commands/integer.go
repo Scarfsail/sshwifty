@@ -63,7 +63,6 @@ func (i *Integer) ByteSize() int {
 	if *i > integerValueCutter {
 		return 2
 	}
-
 	return 1
 }
 
@@ -75,46 +74,34 @@ func (i *Integer) Int() int {
 // Marshal build serialized data of the integer
 func (i *Integer) Marshal(b []byte) (int, error) {
 	bLen := len(b)
-
 	if *i > MaxInteger {
 		return 0, ErrIntegerMarshalTooLarge
 	}
-
 	if bLen < i.ByteSize() {
 		return 0, ErrIntegerMarshalNotEnoughBuffer
 	}
-
 	if *i <= integerValueCutter {
 		b[0] = byte(*i & integerValueCutter)
-
 		return 1, nil
 	}
-
 	b[0] = byte((*i >> 7) | integerHasNextBit)
 	b[1] = byte(*i & integerValueCutter)
-
 	return 2, nil
 }
 
 // Unmarshal read data and parse the integer
 func (i *Integer) Unmarshal(reader rw.ReaderFunc) error {
 	buf := [1]byte{}
-
-	for j := 0; j < MaxIntegerBytes; j++ {
+	for range MaxIntegerBytes {
 		_, rErr := rw.ReadFull(reader, buf[:])
-
 		if rErr != nil {
 			return rErr
 		}
-
 		*i |= Integer(buf[0] & integerValueCutter)
-
 		if integerHasNextBit&buf[0] == 0 {
 			return nil
 		}
-
 		*i <<= 7
 	}
-
 	return nil
 }

@@ -22,13 +22,13 @@
     <li
       v-for="(tabInfo, idx) in tabs"
       :key="tabInfo.id"
-      :class="{
-        active: tab === idx,
-        error:
-          tabInfo.indicator.message.length > 0 &&
-          tabInfo.indicator.level === 'error',
-        updated: tabInfo.indicator.updated && tab !== idx,
-      }"
+      :class="[
+        tabInfo.indicators.level(),
+        {
+          active: tab === idx,
+          updated: tabInfo.updated && tab !== idx,
+        }
+      ]"
       :style="'background: ' + tabInfo.control.color()"
       @click.self="switchTab(idx)"
     >

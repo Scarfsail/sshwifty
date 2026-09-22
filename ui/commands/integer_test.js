@@ -34,7 +34,7 @@ describe("Integer", () => {
 
     let i2 = new integer.Integer(0);
 
-    await i2.unmarshal(r);
+    await i2.unmarshall(r);
 
     assert.strictEqual(i.value(), i2.value());
   });
@@ -53,7 +53,7 @@ describe("Integer", () => {
 
     let i2 = new integer.Integer(0);
 
-    await i2.unmarshal(r);
+    await i2.unmarshall(r);
 
     assert.strictEqual(i.value(), i2.value());
   });

@@ -62,12 +62,10 @@
       :screen="tab.current"
       :screens="tab.tabs"
       :view-port="viewPort"
-      :busy="connectorBusy"
-      @reconnect="reconnectTab"
-      @stopped="tabStopped"
-      @warning="tabWarning"
-      @info="tabInfo"
+      @indicated="tabIndicate"
+      @indicationDismissed="tabDismissIndicator"
       @updated="tabUpdated"
+      @stopped="tabStopped"
     >
       <div id="home-content-wrap">
         <h1>Hi, this is Sshwifty</h1>
@@ -148,6 +146,11 @@ import Connector from "./widgets/connector.vue";
 import Tabs from "./widgets/tabs.vue";
 import TabWindow from "./widgets/tab_window.vue";
 import Screens from "./widgets/screens.vue";
+import {
+  Indicators as ScreenIndicators,
+  Indicator as ScreenIndicator,
+  Action as ScreenIndicatorAction,
+} from "./widgets/screen_indicator.vue";
 
 import * as home_socket from "./home_socketctl.js";
 import * as home_history from "./home_historyctl.js";
@@ -157,6 +160,9 @@ import * as presets from "./commands/presets.js";
 const BACKEND_CONNECT_ERROR =
   "Unable to connect to the Sshwifty backend server: ";
 const BACKEND_REQUEST_ERROR = "Unable to perform request: ";
+
+const INDICATOR_STOPPED = "STOPPED";
+const INDICATOR_RECONNECT_FAILED = "RECONNECT_FAILED";
 
 export default {
   components: {
@@ -207,7 +213,6 @@ export default {
   },
   data() {
     let history = home_history.build(this);
-
     return {
       ticker: null,
       windows: {
@@ -246,17 +251,14 @@ export default {
     this.ticker = setInterval(() => {
       this.tick();
     }, 1000);
-
     if (this.query.length > 1 && this.query.indexOf("+") === 0) {
       this.connectLaunch(this.query.slice(1, this.query.length), (success) => {
         if (!success) {
           return;
         }
-
         this.$emit("navigate-to", "");
       });
     }
-
     window.addEventListener("beforeunload", this.onBrowserClose);
   },
   beforeDestroy() {
@@ -278,7 +280,6 @@ export default {
     },
     tick() {
       let now = new Date();
-
       this.socket.update(now, this);
     },
     closeAllWindow(e) {
@@ -312,25 +313,19 @@ export default {
     },
     async getStreamThenRun(run, end) {
       let errStr = null;
-
       try {
         let conn = await this.connection.get(this.socket);
-
         try {
           run(conn);
         } catch (e) {
           errStr = BACKEND_REQUEST_ERROR + e;
-
           process.env.NODE_ENV === "development" && console.trace(e);
         }
       } catch (e) {
         errStr = BACKEND_CONNECT_ERROR + e;
-
         process.env.NODE_ENV === "development" && console.trace(e);
       }
-
       end();
-
       if (errStr !== null) {
         alert(errStr);
       }
@@ -345,16 +340,12 @@ export default {
 
         return;
       }
-
       this.connector.acquired = true;
       this.connector.busy = true;
-
       let delivered = false;
-
       this.getStreamThenRun(
         (stream) => {
           this.connector.busy = false;
-
           callback(stream);
 
           // Only after callback has returned, so that a throw out of it
@@ -374,7 +365,6 @@ export default {
     },
     connectNew(connector) {
       const self = this;
-
       self.runConnect((stream) => {
         self.connector.connector = {
           id: connector.id(),
@@ -390,13 +380,11 @@ export default {
             () => {},
           ),
         };
-
         self.connector.inputting = true;
       });
     },
     connectPreset(preset) {
       const self = this;
-
       self.runConnect((stream) => {
         self.connector.connector = {
           id: preset.command.id(),
@@ -412,37 +400,28 @@ export default {
             () => {},
           ),
         };
-
         self.connector.inputting = true;
       });
     },
     getConnectorByType(type) {
       let connector = null;
-
       for (let c in this.connector.connectors) {
         if (this.connector.connectors[c].name() !== type) {
           continue;
         }
-
         connector = this.connector.connectors[c];
       }
-
       return connector;
     },
     connectKnown(known) {
       const self = this;
-
       self.runConnect((stream) => {
         let connector = self.getConnectorByType(known.type);
-
         if (!connector) {
           alert("Unknown connector: " + known.type);
-
           self.connector.inputting = false;
-
           return;
         }
-
         self.connector.connector = {
           id: connector.id(),
           name: connector.name(),
@@ -459,18 +438,15 @@ export default {
             },
           ),
         };
-
         self.connector.inputting = true;
       });
     },
     parseConnectLauncher(ll) {
       let llSeparatorIdx = ll.indexOf(":");
-
       // Type must contain at least one charater
       if (llSeparatorIdx <= 0) {
         throw new Error("Invalid Launcher string");
       }
-
       return {
         type: ll.slice(0, llSeparatorIdx),
         query: ll.slice(llSeparatorIdx + 1, ll.length),
@@ -478,21 +454,15 @@ export default {
     },
     connectLaunch(launcher, done) {
       this.showConnectWindow();
-
       this.runConnect((stream) => {
         let ll = this.parseConnectLauncher(launcher),
           connector = this.getConnectorByType(ll.type);
-
         if (!connector) {
           alert("Unknown connector: " + ll.type);
-
           this.connector.inputting = false;
-
           return;
         }
-
         const self = this;
-
         this.connector.connector = {
           id: connector.id(),
           name: connector.name(),
@@ -509,17 +479,14 @@ export default {
             },
           ),
         };
-
         this.connector.inputting = true;
       });
     },
     buildknownLauncher(known) {
       let connector = this.getConnectorByType(known.type);
-
       if (!connector) {
         return;
       }
-
       return this.hostPath + "#+" + connector.launcher(known.data);
     },
     exportKnowns() {
@@ -527,17 +494,14 @@ export default {
     },
     importKnowns(d) {
       this.connector.historyRec.import(d);
-
       this.connector.knowns = this.connector.historyRec.all();
     },
     removeKnown(uid) {
       this.connector.historyRec.del(uid);
-
       this.connector.knowns = this.connector.historyRec.all();
     },
     clearSessionKnown(uid) {
       this.connector.historyRec.clearSession(uid);
-
       this.connector.knowns = this.connector.historyRec.all();
     },
     tabIndexByID(id) {
@@ -557,13 +521,25 @@ export default {
       }
 
       const self = this,
-        tab = this.tab.tabs[index],
-        recIdx = this.connector.historyRec.indexOf(tab.reconnect.uname);
+        tab = this.tab.tabs[index];
+
+      if (!tab.reconnect) {
+        return;
+      }
+
+      const recIdx = this.connector.historyRec.indexOf(tab.reconnect.uname);
 
       if (recIdx < 0) {
-        tab.indicator.message =
-          "Unable to reconnect: the record of this remote is no longer " +
-          "available";
+        this.tabIndicate(
+          index,
+          new ScreenIndicator(
+            INDICATOR_RECONNECT_FAILED,
+            "Unable to reconnect: the record of this remote is no longer " +
+              "available",
+            "error",
+            [],
+          ),
+        );
 
         return;
       }
@@ -651,8 +627,15 @@ export default {
       const index = this.tabIndexByID(reconnectTabID);
 
       if (index >= 0) {
-        this.tab.tabs[index].indicator.message =
-          data.errorTitle + ": " + data.errorMessage;
+        this.tabIndicate(
+          index,
+          new ScreenIndicator(
+            INDICATOR_RECONNECT_FAILED,
+            data.errorTitle + ": " + data.errorMessage,
+            "error",
+            [],
+          ),
+        );
       }
 
       this.connector.reconnectTabID = null;
@@ -688,11 +671,8 @@ export default {
         ui: data.ui,
         reconnect: data.reconnect,
         toolbar: false,
-        indicator: {
-          level: "",
-          message: "",
-          updated: false,
-        },
+        indicators: new ScreenIndicators(),
+        updated: false,
         status: {
           closing: false,
         },
@@ -742,7 +722,6 @@ export default {
     },
     removeFromTab(index) {
       let isLast = index === this.tab.tabs.length - 1;
-
       this.tab.tabs.splice(index, 1);
       this.tab.current = isLast ? this.tab.tabs.length - 1 : index;
     },
@@ -750,15 +729,12 @@ export default {
       if (this.tab.current >= 0) {
         await this.tab.tabs[this.tab.current].control.disabled();
       }
-
       this.tab.current = to;
-
-      this.tab.tabs[this.tab.current].indicator.updated = false;
+      this.tab.tabs[this.tab.current].updated = false;
       await this.tab.tabs[this.tab.current].control.enabled();
     },
     async retapTab(tab) {
       this.tab.tabs[tab].toolbar = !this.tab.tabs[tab].toolbar;
-
       await this.tab.tabs[tab].control.retap(this.tab.tabs[tab].toolbar);
     },
     async closeTab(index) {
@@ -775,58 +751,71 @@ export default {
       }
 
       this.tab.tabs[index].status.closing = true;
-
       try {
         this.tab.tabs[index].control.disabled();
-
         await this.tab.tabs[index].control.close();
       } catch (e) {
         alert("Cannot close tab due to error: " + e);
-
         process.env.NODE_ENV === "development" && console.trace(e);
       }
-
       this.removeFromTab(index);
-
       this.$emit("tab-closed", this.tab.tabs);
     },
-    tabStopped(index, reason) {
-      if (reason !== null) {
-        this.tab.tabs[index].indicator.message = "" + reason;
-        this.tab.tabs[index].indicator.level = "error";
-      } else {
-        this.tab.tabs[index].indicator.message = "";
-        this.tab.tabs[index].indicator.level = "";
-      }
+    clearIndicator(index) {
+      this.tab.tabs[index].indicators.clear();
     },
-    tabMessage(index, msg, type) {
-      if (msg.toDismiss) {
-        if (
-          this.tab.tabs[index].indicator.message !== msg.text ||
-          this.tab.tabs[index].indicator.level !== type
-        ) {
-          return;
-        }
-
-        this.tab.tabs[index].indicator.message = "";
-        this.tab.tabs[index].indicator.level = "";
-
-        return;
-      }
-
-      this.tab.tabs[index].indicator.message = msg.text;
-      this.tab.tabs[index].indicator.level = type;
+    tabIndicate(index, indicator) {
+      this.tab.tabs[index].indicators.append(indicator);
     },
-    tabWarning(index, msg) {
-      this.tabMessage(index, msg, "warning");
-    },
-    tabInfo(index, msg) {
-      this.tabMessage(index, msg, "info");
+    tabDismissIndicator(index, uid) {
+      this.tab.tabs[index].indicators.dismiss(uid);
     },
     tabUpdated(index) {
       this.$emit("tab-updated", this.tab.tabs);
+      this.tab.tabs[index].updated = index !== this.tab.current;
+    },
+    tabStopped(index, reason) {
+      this.clearIndicator(index);
+      this.tabIndicate(
+        index,
+        new ScreenIndicator(
+          INDICATOR_STOPPED,
+          "" + reason,
+          "error",
+          this.buildReconnectActions(this.tab.tabs[index]),
+        ),
+      );
+    },
+    // buildReconnectActions offers a reconnect for a session that carries a
+    // history reference to dial again. A session without one - a command
+    // that keeps no history - is given no action at all
+    buildReconnectActions(tab) {
+      if (!tab.reconnect) {
+        return [];
+      }
 
-      this.tab.tabs[index].indicator.updated = index !== this.tab.current;
+      const self = this,
+        tabID = tab.id;
+
+      return [
+        new ScreenIndicatorAction("Reconnect", (uid, nonCancel) => {
+          // The indicator is gone rather than clicked: it has been replaced
+          // or cleared, and the reconnect it offered is no longer on offer
+          if (!nonCancel) {
+            return;
+          }
+
+          // The tab may have moved while the indicator was displayed, so
+          // resolve it again instead of trusting the index it was built with
+          const index = self.tabIndexByID(tabID);
+
+          if (index < 0) {
+            return;
+          }
+
+          self.reconnectTab(index);
+        }),
+      ];
     },
   },
 };

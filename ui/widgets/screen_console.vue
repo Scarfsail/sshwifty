@@ -106,9 +106,16 @@ import { WebLinksAddon } from "@xterm/addon-web-links";
 import { Unicode11Addon } from '@xterm/addon-unicode11';
 import { WebglAddon } from "@xterm/addon-webgl";
 import { FitAddon } from "@xterm/addon-fit";
-import { ClipboardAddon } from "@xterm/addon-clipboard";
+import { 
+  ClipboardAddon,
+  Base64 as ClipboardBase64
+} from "@xterm/addon-clipboard";
 import { isNumber } from "../commands/common.js";
 import { consoleScreenKeys } from "./screen_console_keys.js";
+import { 
+  Action as IndicatorAction,
+  Indicator as Indicator,
+} from "./screen_indicator.vue";
 
 import "./screen_console.css";
 import "@xterm/xterm/css/xterm.css";
@@ -144,8 +151,145 @@ function webglSupported() {
   return false;
 }
 
+const termClipboardWarningTimeout = 10000;
+const termClipboardWriteWarning = "Remote is requesting to copy content to " +
+  "your system's clipboard. Do you want to grant the permission?";
+const termClipboardAlwaysWriteWarning = "Clipboard requests from the remote " +
+  "is always accepted into the clipboard of your system";
+
+class CustomClipboardProvider {
+  constructor(indicatorMsg) {
+    this.cached = "";
+    this.alwaysAllowed = false;
+    this.indicatorShown = false;
+    this.indicatorMsg = indicatorMsg;
+  }
+
+  readText(selection) {
+    // Only allow in-browser clipboard sharing. If user needs to import data
+    // from their system clipboard, they can do that with Control+Shift+V
+    return this.cached;
+  }
+
+  showAlwaysAllowIndicator() {
+    const INDICATOR_CLIPBOARD_ALWAYS_WRITE_WARNING = "CLIPBOARD_ALWAYS_WRITE"
+    const self = this;
+    const clearIndicator = () => {
+        self.indicatorMsg.dismiss(INDICATOR_CLIPBOARD_ALWAYS_WRITE_WARNING);
+    };
+    self.indicatorMsg.send(
+      new Indicator(
+        INDICATOR_CLIPBOARD_ALWAYS_WRITE_WARNING,
+        termClipboardAlwaysWriteWarning,
+        "info",
+        [
+          new IndicatorAction(
+            "\u{2715} Stop allowing",
+            (uid, ok) => {
+              clearIndicator();
+              if (!ok) {
+                return;
+              }
+              self.alwaysAllowed = false;
+            }
+          ),
+        ]
+      ),
+    );
+  }
+
+  writeTextToSysClipboard(text) {
+    try {
+      return navigator.clipboard.writeText(text);
+    } catch (e) {
+      if (this.clipboardWriteErrorTimeout) {
+        return
+      }
+      const INDICATOR_CLIPBOARD_WRITE_ERROR = "CLIPBOARD_WRITE_ERROR";
+      this.indicatorMsg.send(
+        new Indicator(
+          INDICATOR_CLIPBOARD_WRITE_ERROR,
+          "unable to copy to clipboard: " + e,
+          "error",
+          []
+        ),
+      );
+      const self = this;
+      self.clipboardWriteErrorTimeout = setTimeout(() => {
+        self.indicatorMsg.dismiss(INDICATOR_CLIPBOARD_WRITE_ERROR);
+        self.clipboardWriteErrorTimeout = null;
+      }, termClipboardWarningTimeout)
+    }
+  }
+
+  writeTextToMemClipboard(text) {
+    this.cached = text;
+    if (this.indicatorShown) {
+      return;
+    }
+    const INDICATOR_CLIPBOARD_WRITE_WARNING = "CLIPBOARD_WRITE_WARNING";
+    const self = this;
+    self.indicatorShown = true;
+    const clearIndicator = () => {
+      if (!self.indicatorShown) {
+        return;
+      }
+      self.indicatorMsg.dismiss(INDICATOR_CLIPBOARD_WRITE_WARNING);
+      self.indicatorShown = false;
+    };
+    const copyCached = () => {
+      self.writeTextToSysClipboard(self.cached);
+      self.cached = "";
+    };
+    self.indicatorMsg.send(
+      new Indicator(
+        INDICATOR_CLIPBOARD_WRITE_WARNING,
+        termClipboardWriteWarning,
+        "warning",
+        [
+          new IndicatorAction(
+            "\u{2297} Don't copy",
+            (uid, ok) => {
+              clearIndicator();
+            }
+          ),
+          new IndicatorAction(
+            "\u{2398} Allow and copy once",
+            (uid, ok) => {
+              clearIndicator();
+              if (!ok) {
+                return;
+              }
+              copyCached();
+            }
+          ),
+          new IndicatorAction(
+            "Allow for this session",
+            (uid, ok) => {
+              clearIndicator();
+              if (!ok) {
+                return;
+              }
+              self.alwaysAllowed = true;
+              self.showAlwaysAllowIndicator();
+              copyCached();
+            },
+          ),
+        ]
+      ),
+    );
+  }
+
+  writeText(selection, text) {
+    if (this.alwaysAllowed) {
+      return this.writeTextToSysClipboard(text);
+    }
+    return this.writeTextToMemClipboard(text);
+  }
+}
+
 class Term {
-  constructor(control) {
+  constructor(control, indicatorMsg) {
     const resizeDelayInterval = 500;
 
     this.control = control;
@@ -276,7 +420,7 @@ class Term {
     });
   }
 
-  init(root) {
+  init(root, indicatorMsg) {
     if (this.closed) {
       return;
     }
@@ -284,7 +428,12 @@ class Term {
     this.term.loadAddon(this.fit);
     this.term.loadAddon(new WebLinksAddon());
     this.term.loadAddon(new Unicode11Addon());
-    this.term.loadAddon(new ClipboardAddon());
+    this.term.loadAddon(
+      new ClipboardAddon(
+        new ClipboardBase64(),
+        new CustomClipboardProvider(indicatorMsg),
+      )
+    );
     try {
       if (webglSupported()) {
         this.term.loadAddon(new WebglAddon());
@@ -505,7 +654,7 @@ export default {
         }
       }
     },
-    async openTerm(root, callbacks) {
+    async openTerm(root, indicatorMsg) {
       const self = this;
       try {
         await self.loadRemoteFont(termTypeFaces, termTypeFaceLoadTimeout);
@@ -513,7 +662,7 @@ export default {
           return;
         }
         root.innerHTML = "";
-        self.term.init(root);
+        self.term.init(root, indicatorMsg);
         return;
       } catch (e) {
         // Ignore
@@ -522,37 +671,39 @@ export default {
         return;
       }
       root.innerHTML = "";
-      callbacks.warn(termTypeFaceLoadError, false);
+      const INDICATOR_ID_TYPE_FACE_ERR = "TYPE_FACE_ERR";
+      indicatorMsg.send(
+        new Indicator(
+          INDICATOR_ID_TYPE_FACE_ERR,
+          termTypeFaceLoadError,
+          "warning",
+          [],
+        ),
+      );
       self.term.setFont(termFallbackTypeFace);
-      self.term.init(root);
+      self.term.init(root, indicatorMsg);
       self.retryLoadRemoteFont(termTypeFaces, termTypeFaceLoadTimeout, () => {
         if (self.term.destroyed()) {
           return;
         }
         self.term.setFont(termTypeFaces);
-        callbacks.warn(termTypeFaceLoadError, true);
+        indicatorMsg.dismiss(INDICATOR_ID_TYPE_FACE_ERR);
       });
     },
     triggerActive(active) {
       active ? this.activate() : this.deactivate();
     },
     async init() {
-      let self = this;
+      const self = this;
 
       await self.openTerm(
         self.$el.getElementsByClassName("console-console")[0],
         {
-          warn(msg, toDismiss) {
-            self.$emit("warning", {
-              text: msg,
-              toDismiss: toDismiss,
-            });
+          send(indicator) {
+            self.$emit("indicated", indicator);
           },
-          info(msg, toDismiss) {
-            self.$emit("info", {
-              text: msg,
-              toDismiss: toDismiss,
-            });
+          dismiss(uid) {
+            self.$emit("indicationDismissed", uid);
           },
         },
       );
@@ -583,7 +734,7 @@ export default {
       if (this.runner !== null) {
         return;
       }
-      let self = this;
+      const self = this;
       this.runner = (async () => {
         try {
           for (;;) {

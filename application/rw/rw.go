@@ -23,19 +23,15 @@ type ReaderFunc func(b []byte) (int, error)
 // ReadFull Read until given b is fully loaded
 func ReadFull(r ReaderFunc, b []byte) (int, error) {
 	bLen := len(b)
-	readed := 0
-
+	read := 0
 	for {
-		rLen, rErr := r(b[readed:])
-
-		readed += rLen
-
+		rLen, rErr := r(b[read:])
+		read += rLen
 		if rErr != nil {
-			return readed, rErr
+			return read, rErr
 		}
-
-		if readed >= bLen {
-			return readed, nil
+		if read >= bLen {
+			return read, nil
 		}
 	}
 }

@@ -219,6 +219,33 @@
           </label>
         </div>
 
+        <div v-if="field.field.type === 'checkboxes'" class="items">
+          <label
+            v-for="(option, oKey) in field.delimiterSeparatedExamples(',')"
+            :key="oKey"
+            class="field horizontal item"
+          >
+            <input
+              v-model="option.value"
+              v-focus="field.autofocus && oKey === 0"
+              type="checkbox"
+              autocomplete="off"
+              :name="'[]'+field.field.name"
+              :autofocus="field.autofocus && oKey === 0"
+              :value="option.value"
+              :checked="option.value"
+              :aria-checked="option.value"
+              :tabindex="field.nextSubTabIndex(oKey)"
+              :disabled="field.field.readonly"
+              @focus="focus(key, field, true)"
+              @blur="focus(key, field, false)"
+              @input="changed(key, field, false, option.changed())"
+              @change="changed(key, field, true, option.changed())"
+            />
+            {{ option.title }}
+          </label>
+        </div>
+
         <ul
           v-if="field.suggestion.suggestions.length > 0"
           class="input-suggestions lst-nostyle"
@@ -300,13 +327,13 @@ import * as command from "../commands/commands.js";
 import * as fieldBuilder from "./connector_field_builder.js";
 
 const preloaderIDPrefix = "connector-resource-preload-control-";
-const hightlightClearTimeout = 1000;
+const highlightClearTimeout = 1000;
 
 function buildEmptyCurrent() {
   return {
     data: null,
     alert: false,
-    clearHightlightTimeout: null,
+    clearHighlightTimeout: null,
     title: "",
     message: "",
     fields: [],
@@ -324,7 +351,6 @@ export default {
         if (!binding.value) {
           return;
         }
-
         el.focus();
       },
     },
@@ -353,7 +379,6 @@ export default {
       if (this.currentConnector !== null) {
         await this.closeWizard();
       }
-
       this.cancelled = false;
       this.currentConnector = newV;
       this.runWizard();
@@ -374,38 +399,29 @@ export default {
   methods: {
     async sendCancel() {
       await this.closeWizard();
-
       this.$emit("cancel", true);
     },
     cancel() {
       if (this.working) {
         return;
       }
-
       if (this.cancelled) {
         return;
       }
-
       this.cancelled = true;
-
       this.sendCancel();
     },
     buildCurrent(next) {
       try {
         this.current = buildEmptyCurrent();
-
         this.working = this.getConnector().wizard.started();
-
         this.current.type = next.type();
         this.current.data = next.data();
-
         let fields = null,
           tabIndex = 1;
-
         switch (this.current.type) {
           case command.NEXT_PROMPT:
             fields = this.current.data.inputs();
-
             for (let i = 0; i < fields.length; i++) {
               const f = fieldBuilder.build(tabIndex, i, fields[i]);
               if (f.field.readonly) {
@@ -414,24 +430,19 @@ export default {
               this.current.fields.push(f);
               tabIndex = f.nextTabIndex();
             }
-
             this.submitterTabIndex = tabIndex > 0 ? tabIndex : 1;
             this.current.actionText = this.current.data.actionText();
             this.current.submittable = true;
             this.current.alert = true;
             this.current.cancellable = true;
-
-          // Fallthrough
-
+            // Fallthrough
           case command.NEXT_WAIT:
             this.current.title = this.current.data.title();
             this.current.message = this.current.data.message();
             break;
-
           case command.NEXT_DONE:
             this.working = false;
             this.disabled = true;
-
             if (!this.current.data.success()) {
               this.current.title = this.current.data.error();
               this.current.message = this.current.data.message();
@@ -439,23 +450,18 @@ export default {
               this.$emit("done", this.current.data.data());
             }
             break;
-
           default:
             throw new Error("Unknown command type");
         }
-
         if (!this.working) {
           this.current.cancellable = false;
         }
-
         return next;
       } catch (e) {
         this.current.title = "Encountered an error";
         this.current.message = e;
-
         this.working = false;
         this.disabled = true;
-
         throw e;
       }
     },
@@ -463,20 +469,15 @@ export default {
       if (this.currentConnector === null) {
         this.currentConnector = this.connector;
       }
-
       return this.currentConnector;
     },
     async closeWizard() {
       if (this.currentConnectorCloseWait === null) {
         return;
       }
-
       let waiter = this.currentConnectorCloseWait;
-
       this.currentConnectorCloseWait = null;
-
       this.getConnector().wizard.close();
-
       try {
         await waiter;
       } catch (e) {
@@ -487,24 +488,19 @@ export default {
       if (this.currentConnectorCloseWait !== null) {
         throw new Error("Cannot run wizard multiple times");
       }
-
       this.preloaderIDName =
         preloaderIDPrefix +
         this.getConnector().wizard.control().ui().toLowerCase();
-
       this.currentConnectorCloseWait = (async () => {
         while (!this.disabled) {
           this.clearFieldValueBackup();
-
           let next = this.buildCurrent(await this.getConnector().wizard.next());
-
           switch (next.type()) {
             case command.NEXT_PROMPT:
             case command.NEXT_WAIT:
               continue;
             case command.NEXT_DONE:
               return;
-
             default:
               throw new Error("Unknown command type");
           }
@@ -513,21 +509,17 @@ export default {
     },
     getFieldValues() {
       let mod = {};
-
       for (let i = 0; i < this.current.fields.length; i++) {
         mod[this.current.fields[i].field.name] =
           this.current.fields[i].field.value;
       }
-
       return mod;
     },
     createFieldValueBackup() {
       let backup = [];
-
       for (let i = 0; i < this.current.fields.length; i++) {
         backup.push(this.current.fields[i].field.value);
       }
-
       this.fieldValueBackup = backup;
     },
     clearFieldValueBackup() {
@@ -540,14 +532,12 @@ export default {
     },
     delayedClearFieldHighlights(timeout) {
       const self = this;
-
-      if (self.clearHightlightTimeout === null) {
-        clearTimeout(self.clearHightlightTimeout);
-        self.clearHightlightTimeout = null;
+      if (self.clearHighlightTimeout === null) {
+        clearTimeout(self.clearHighlightTimeout);
+        self.clearHighlightTimeout = null;
       }
-
-      self.clearHightlightTimeout = setTimeout(() => {
-        self.clearHightlightTimeout = null;
+      self.clearHighlightTimeout = setTimeout(() => {
+        self.clearHighlightTimeout = null;
         self.clearFieldHighlights();
       }, timeout);
     },
@@ -556,7 +546,6 @@ export default {
         if (except === i) {
           continue;
         }
-
         this.current.fields[i].field.value = this.fieldValueBackup[i];
       }
     },
@@ -571,30 +560,21 @@ export default {
       if (el.files.length <= 0) {
         return;
       }
-
       el.disabled = "disabled";
-
       let r = new FileReader();
-
       r.onload = () => {
         let s = el.nextSibling;
-
         for (;;) {
           if (s.tagName !== "INPUT") {
             s = s.nextSibling;
-
             continue;
           }
-
           field.field.value = r.result;
           s.dispatchEvent(new Event("change"));
-
           break;
         }
-
         el.disabled = "";
       };
-
       r.readAsText(el.files[0], "utf-8");
     },
     verify(key, field, force) {
@@ -607,14 +587,11 @@ export default {
         field.error = "";
         field.message = "";
         field.verified = false;
-
         if (field.modified || force) {
           field.error = "" + e;
         }
       }
-
       field.highlighted = false;
-
       if (
         !field.verified &&
         (field.modified || force) &&
@@ -622,25 +599,20 @@ export default {
       ) {
         field.error = "Invalid";
       }
-
       return field.verified;
     },
     verifyAll() {
       let verified = true;
-
       for (let i = 0; i < this.current.fields.length; i++) {
         if (this.verify(i, this.current.fields[i], true)) {
           continue;
         }
-
         verified = false;
       }
-
       return verified;
     },
     focus(key, field, focused) {
       field.highlighted = false;
-
       if (!focused) {
         // Don't reset a holding field
         if (!field.inputted) {
@@ -652,21 +624,16 @@ export default {
             field.selectedSuggestionIndex(),
           );
         }
-
         return;
       }
-
       this.createFieldValueBackup();
       field.reloadSuggestions();
     },
     applySuggestion(key, field, suggestion) {
       this.restoreFieldValuesFromBackup(-1);
-
       field.field.value = suggestion.value;
-
       for (let i = 0; i < this.current.fields.length; i++) {
         this.current.fields[i].highlighted = false;
-
         if (
           i === key ||
           this.current.fields[i].inputted ||
@@ -674,39 +641,31 @@ export default {
         ) {
           continue;
         }
-
         if (
           typeof suggestion.fields[this.current.fields[i].field.name] ===
           "undefined"
         ) {
           continue;
         }
-
         this.current.fields[i].field.value =
           suggestion.fields[this.current.fields[i].field.name];
-
         if (!this.verify(i, this.current.fields[i], true)) {
           continue;
         }
-
         this.current.fields[i].highlighted = true;
       }
     },
     applySuggestionAndVerify(key, field, force, suggestion) {
       field.inputted = true;
-
       this.applySuggestion(key, field, suggestion);
-
       return this.verify(key, field, force);
     },
     changed(key, field, force) {
       this.createFieldValueBackup();
-
       field.highlighted = false;
       field.inputted = true;
       field.enableInputSuggestionsOnAllInput();
       field.reloadSuggestions();
-
       this.verify(key, field, force);
     },
     triggerSuggestions(event, key, field) {
@@ -714,50 +673,40 @@ export default {
         case "ArrowUp":
           event.preventDefault();
           field.moveSuggestionsCursor(true);
-
           this.applySuggestionAndVerify(
             key,
             field,
             true,
-            field.curentSuggestion(),
+            field.currentSuggestion(),
           );
           break;
-
         case "ArrowDown":
           event.preventDefault();
           field.moveSuggestionsCursor(false);
-
           this.applySuggestionAndVerify(
             key,
             field,
             true,
-            field.curentSuggestion(),
+            field.currentSuggestion(),
           );
           break;
-
         case "Escape":
           if (!field.suggestionsPending()) {
             return;
           }
-
           event.preventDefault();
-
           this.restoreFieldValuesFromBackup(key);
           this.clearFieldValueBackup();
           this.clearFieldHighlights();
           this.verify(key, field, true);
-
           field.disableSuggestionsForInput(field.field.value);
           field.resetSuggestions(true);
           break;
-
         case "Enter":
           if (!field.suggestionsPending()) {
             return;
           }
-
           event.preventDefault();
-
           this.clickInputSuggestion(
             key,
             field,
@@ -768,51 +717,45 @@ export default {
     },
     clickInputSuggestion(key, field, index) {
       const self = this;
-
       field.selectSuggestion(index);
-
       if (
         self.applySuggestionAndVerify(
           key,
           field,
           true,
-          field.curentSuggestion(),
+          field.currentSuggestion(),
         )
       ) {
         field.disableSuggestionsForInput(field.field.value);
       } else {
         field.enableInputSuggestionsOnAllInput();
       }
-
       field.resetSuggestions(true);
-
       self.clearFieldValueBackup();
-      self.delayedClearFieldHighlights(hightlightClearTimeout);
+      self.delayedClearFieldHighlights(highlightClearTimeout);
     },
     async submitAndGetNext() {
       if (this.current.submitting || this.disabled) {
         return;
       }
-
       if (this.current.data === null || !this.current.submittable) {
         return;
       }
-
       if (!this.verifyAll()) {
         return;
       }
-
       this.current.submitting = true;
-
       try {
         await this.current.data.submit(this.getFieldValues());
       } catch (e) {
+        try {
+          await this.current.data.cancel();
+        } catch(e) {
+          // Ignore
+        }
         this.current.submitting = false;
-
         alert("Submission has failed: " + e);
-
         process.env.NODE_ENV === "development" && console.trace(e);
-
         return;
       }
     },
@@ -820,13 +763,10 @@ export default {
       if (this.current.submitting || this.disabled) {
         return;
       }
-
       if (this.current.data === null || !this.current.cancellable) {
         return;
       }
-
       this.current.submitting = true;
-
       await this.current.data.cancel();
     },
   },

@@ -107,7 +107,17 @@
 }
 
 #tab-window-tabs > li.error::after {
-  background: #d55;
+  background: #b44;
+  width: 5px;
+}
+
+#tab-window-tabs > li.warning::after {
+  background: #b82;
+  width: 5px;
+}
+
+#tab-window-tabs > li.info::after {
+  background: #28b;
   width: 5px;
 }
 

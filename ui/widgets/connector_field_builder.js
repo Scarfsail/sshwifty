@@ -19,7 +19,6 @@ function getTabIndex(tabIndex, field) {
   if (field.readonly) {
     return 0;
   }
-
   switch (field.type) {
     case "text":
     case "password":
@@ -29,7 +28,6 @@ function getTabIndex(tabIndex, field) {
     case "select":
     case "radio":
       return tabIndex;
-
     default:
       return 0;
   }
@@ -48,9 +46,53 @@ export function build(tabIndex, i, field) {
     tabIndex: getTabIndex(tabIndex, field),
     blockedSuggestionValue: "",
     blockingSuggestion: false,
+    getSeparatedValues(by, a) {
+      let v = a.split(by),
+        o = [];
+      for (let i in v) {
+        o.push(v[i].trim());
+      }
+      return o;
+    },
+    removeFromDelimiterSeparatedValues(by, v, remove) {
+      let index = v.indexOf(remove);
+      if (index >= 0) {
+        v.splice(index, 1);
+      }
+      return v;
+    },
+    appendToDelimiterSeparatedValues(by, v, add) {
+      v = this.removeFromDelimiterSeparatedValues(by, v, add);
+      v.push(add);
+      return v;
+    },
+    renderDelimiterSeparatedValues(by, delimiterSeparatedValues) {
+      this.field.value = delimiterSeparatedValues.join(by);
+    },
+    delimiterSeparatedExamples(by) {
+      let v = this.getSeparatedValues(by, this.field.example),
+        s = this.getSeparatedValues(by, this.field.value),
+        o = [],
+        self = this,
+        r = v.filter((item) => s.indexOf(item) >= 0);
+      for (let i in v) {
+        o.push({
+          title: v[i],
+          value: s.indexOf(v[i]) >= 0,
+          changed() {
+            if (this.value) {
+              r = self.appendToDelimiterSeparatedValues(by, r, v[i]);
+            } else {
+              r = self.removeFromDelimiterSeparatedValues(by, r, v[i]);
+            }
+            r = self.renderDelimiterSeparatedValues(by, r);
+          },
+        });
+      }
+      return o;
+    },
     nextTabIndex() {
       let nextTabIndex = 0;
-
       if (this.field.readonly) {
         nextTabIndex = this.tabIndex;
       } else {
@@ -58,30 +100,26 @@ export function build(tabIndex, i, field) {
           case "radio":
             nextTabIndex = this.tabIndex + this.field.example.split(",").length;
             break;
-
           default:
             nextTabIndex = this.tabIndex + 1;
         }
       }
-
       if (tabIndex >= nextTabIndex) {
         return tabIndex;
       }
-
       return nextTabIndex;
     },
     nextSubTabIndex(subIndex) {
       if (this.field.readonly) {
         return 0;
       }
-
       return this.tabIndex + subIndex;
     },
     suggestion: {
       selected: -1,
       suggestions: [],
-      orignalValue: "",
-      orignalValueStored: false,
+      originalValue: "",
+      originalValueStored: false,
       holding: false,
       needsReset: false,
       reset() {
@@ -90,51 +128,43 @@ export function build(tabIndex, i, field) {
         this.holding = false;
         this.needsReset = false;
         this.clearStored();
-
         return true;
       },
       softReset() {
         if (this.holding) {
           this.needsReset = true;
-
           return false;
         }
-
         return this.reset();
       },
       hold(toHold) {
         this.holding = toHold;
-
         if (this.holding || !this.needsReset) {
           return;
         }
-
         this.reset();
       },
-      storeOrignal(val) {
-        if (this.orignalValueStored) {
+      storeOriginal(val) {
+        if (this.originalValueStored) {
           return;
         }
-
-        this.orignalValue = val;
-        this.orignalValueStored = true;
+        this.originalValue = val;
+        this.originalValueStored = true;
       },
       loadStored(defaultValue) {
-        return this.orignalValueStored ? this.orignalValue : defaultValue;
+        return this.originalValueStored ? this.originalValue : defaultValue;
       },
       clearStored() {
-        this.orignalValue = "";
-        this.orignalValueStored = false;
+        this.originalValue = "";
+        this.originalValueStored = false;
       },
       select(index, fieldValue) {
         if (this.selected < 0) {
-          this.storeOrignal(fieldValue);
+          this.storeOriginal(fieldValue);
         }
-
         if (index < -1 || index >= this.suggestions.length) {
           return;
         }
-
         this.selected = index;
       },
       cursorUp(fieldValue) {
@@ -149,13 +179,10 @@ export function build(tabIndex, i, field) {
       reload(fieldValue, suggestions) {
         this.selected = -1;
         this.suggestions = [];
-
         this.clearStored();
-
         if (suggestions.length === 1 && suggestions[0].value === fieldValue) {
           return;
         }
-
         for (let v in suggestions) {
           this.suggestions.push({
             title: suggestions[v].title,
@@ -172,7 +199,6 @@ export function build(tabIndex, i, field) {
             fields: {},
           };
         }
-
         return this.suggestions[this.selected];
       },
     },
@@ -194,7 +220,6 @@ export function build(tabIndex, i, field) {
       ) {
         return;
       }
-
       this.suggestion.reload(
         this.field.value,
         this.field.suggestions(this.field.value),
@@ -212,7 +237,7 @@ export function build(tabIndex, i, field) {
     selectSuggestion(index) {
       this.suggestion.select(index, this.field.value);
     },
-    curentSuggestion() {
+    currentSuggestion() {
       return this.suggestion.current(this.field.value);
     },
     selectedSuggestionIndex() {

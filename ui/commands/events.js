@@ -30,7 +30,6 @@ export class Events {
   constructor(events, callbacks) {
     this.events = {};
     this.placeHolders = {};
-
     for (let i in events) {
       if (typeof callbacks[events[i]] !== "function") {
         throw new Exception(
@@ -41,15 +40,11 @@ export class Events {
             '" instead.',
         );
       }
-
       let name = events[i];
-
       if (name.indexOf("@") === 0) {
         name = name.substring(1);
-
         this.placeHolders[name] = null;
       }
-
       this.events[name] = callbacks[events[i]];
     }
   }
@@ -69,7 +64,6 @@ export class Events {
           "unregistered or already been acquired",
       );
     }
-
     if (typeof callback !== "function") {
       throw new Exception(
         'Unknown event type for "' +
@@ -79,9 +73,7 @@ export class Events {
           '" instead.',
       );
     }
-
     delete this.placeHolders[type];
-
     this.events[type] = callback;
   }
 
@@ -100,7 +92,6 @@ export class Events {
     if (!this.events[type] && this.placeHolders[type] !== null) {
       throw new Exception("Unknown event type: " + type);
     }
-
     return this.events[type](...data);
   }
 }

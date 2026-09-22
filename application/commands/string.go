@@ -38,46 +38,55 @@ type String struct {
 	data []byte
 }
 
-// ParseString build the String according to readed data
-func ParseString(reader rw.ReaderFunc, b []byte) (String, error) {
+// ParseString build the String according to currently read data
+func ParseString(reader rw.ReaderFunc, b []byte) (String, Integer, error) {
 	lenData := Integer(0)
-
 	mErr := lenData.Unmarshal(reader)
-
 	if mErr != nil {
-		return String{}, mErr
+		return String{}, 0, mErr
 	}
-
 	bLen := len(b)
-
 	if bLen < lenData.Int() {
-		return String{}, ErrStringParseBufferTooSmall
+		return String{}, 0, ErrStringParseBufferTooSmall
 	}
-
 	_, rErr := rw.ReadFull(reader, b[:lenData])
-
 	if rErr != nil {
-		return String{}, rErr
+		return String{}, 0, rErr
 	}
-
 	return String{
 		len:  lenData,
 		data: b[:lenData],
-	}, nil
+	}, lenData, nil
 }
+
+// Errors for NewString
+var (
+	errStringDataTooLong = errors.New(
+		"Data was too long for a String")
+)
 
 // NewString create a new String
 func NewString(d []byte) String {
 	dLen := len(d)
-
 	if dLen > MaxInteger {
-		panic("Data was too long for a String")
+		panic(errStringDataTooLong.Error())
 	}
-
 	return String{
 		len:  Integer(dLen),
 		data: d,
 	}
+}
+
+// BuildString creates a string based on given `d`
+func BuildString(d []byte) (String, error) {
+	dLen := len(d)
+	if dLen > MaxInteger {
+		return String{}, errStringDataTooLong
+	}
+	return String{
+		len:  Integer(dLen),
+		data: d,
+	}, nil
 }
 
 // Data returns the data of the string
@@ -88,16 +97,66 @@ func (s String) Data() []byte {
 // Marshal the string to give buffer
 func (s String) Marshal(b []byte) (int, error) {
 	bLen := len(b)
-
 	if bLen < s.len.ByteSize()+len(s.data) {
 		return 0, ErrStringMarshalBufferTooSmall
 	}
-
 	mLen, mErr := s.len.Marshal(b)
-
 	if mErr != nil {
 		return 0, mErr
 	}
-
 	return copy(b[mLen:], s.data) + mLen, nil
+}
+
+// MarshalString marshals `s` into `b`
+func MarshalString(s string, b []byte) (int, error) {
+	if s, err := BuildString([]byte(s)); err != nil {
+		return 0, err
+	} else {
+		return s.Marshal(b)
+	}
+}
+
+// Errors for MarshalStrings
+var (
+	errMarshalStringsTooManyStrings = errors.New(
+		"too many strings to marshal")
+)
+
+// MarshalString marshals `s` into `b`
+func MarshalStrings(s []string, b []byte) (int, error) {
+	if len(s) > MaxInteger {
+		return 0, errMarshalStringsTooManyStrings
+	}
+	size := Integer(len(s))
+	start, err := size.Marshal(b)
+	if err != nil {
+		return 0, err
+	}
+	for i := range s {
+		if n, err := MarshalString(s[i], b[start:]); err != nil {
+			return 0, err
+		} else {
+			start += n
+		}
+	}
+	return start, nil
+}
+
+// ParseStrings parses strings read from given read
+func ParseStrings(reader rw.ReaderFunc, b []byte) ([]String, Integer, error) {
+	size := Integer(0)
+	if err := size.Unmarshal(reader); err != nil {
+		return nil, 0, err
+	}
+	out := make([]String, 0, size)
+	next := Integer(0)
+	for range size {
+		if s, consumed, err := ParseString(reader, b[next:]); err != nil {
+			return nil, 0, err
+		} else {
+			next += consumed
+			out = append(out, s)
+		}
+	}
+	return out, next, nil
 }

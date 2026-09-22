@@ -82,11 +82,8 @@ class Telnet {
         this.config.host.port,
       ),
       addrBuf = addr.buffer();
-
     let data = new Uint8Array(addrBuf.length);
-
     data.set(addrBuf, 0);
-
     initialSender.send(data);
   }
 
@@ -100,10 +97,8 @@ class Telnet {
   initialize(streamInitialHeader) {
     if (!streamInitialHeader.success()) {
       this.events.fire("initialization.failed", streamInitialHeader);
-
       return;
     }
-
     this.events.fire("initialized", streamInitialHeader);
   }
 
@@ -118,28 +113,24 @@ class Telnet {
    * @throws {Exception} When the stream header type is unknown
    *
    */
-  tick(streamHeader, rd) {
+  async tick(streamHeader, rd) {
     switch (streamHeader.marker()) {
       case SERVER_DIAL_CONNECTED:
         if (!this.connected) {
           this.connected = true;
-
           return this.events.fire("connect.succeed", rd, this);
         }
         break;
-
       case SERVER_DIAL_FAILED:
         if (!this.connected) {
           return this.events.fire("connect.failed", rd);
         }
         break;
-
       case SERVER_HOOK_OUTPUT_BEFORE_CONNECTING:
         if (!this.connected) {
           return this.events.fire("hook.before_connected", rd);
         }
         break;
-
       case SERVER_REMOTE_BAND:
         if (this.connected) {
           return this.events.fire("inband", rd);
@@ -174,7 +165,6 @@ class Telnet {
    */
   close() {
     this.sendClose();
-
     return this.events.fire("close");
   }
 
@@ -205,23 +195,18 @@ const initialFieldDef = {
       if (d.length <= 0) {
         throw new Error("Hostname must be specified");
       }
-
       let addr = common.splitHostPort(d, DEFAULT_PORT);
-
       if (addr.addr.length <= 0) {
         throw new Error("Cannot be empty");
       }
-
       if (addr.addr.length > address.MAX_ADDR_LEN) {
         throw new Error(
           "Can no longer than " + address.MAX_ADDR_LEN + " bytes",
         );
       }
-
       if (addr.port <= 0) {
         throw new Error("Port must be specified");
       }
-
       return "Look like " + addr.type + " address";
     },
   },
@@ -240,10 +225,8 @@ const initialFieldDef = {
         if (common.charsetPresets[i] !== d) {
           continue;
         }
-
         return "";
       }
-
       throw new Error('The character encoding "' + d + '" is not supported');
     },
   },
@@ -352,15 +335,12 @@ class Wizard {
    */
   buildCommand(sender, configInput, sessionData) {
     let self = this;
-
     let parsedConfig = {
       host: address.parseHostPort(configInput.host, DEFAULT_PORT),
       charset: configInput.charset,
     };
-
     // Copy the keptSessions from the record so it will not be overwritten here
     let keptSessions = self.keptSessions ? [].concat(...self.keptSessions) : [];
-
     return new Telnet(sender, parsedConfig, {
       "initialization.failed"(streamInitialHeader) {
         switch (streamInitialHeader.data()) {
@@ -368,10 +348,8 @@ class Wizard {
             self.step.resolve(
               self.stepErrorDone("Request rejected", "Invalid address"),
             );
-
             return;
         }
-
         self.step.resolve(
           self.stepErrorDone(
             "Request rejected",
@@ -383,9 +361,7 @@ class Wizard {
         self.step.resolve(self.stepWaitForEstablishWait(configInput.host));
       },
       async "hook.before_connected"(rd) {
-        const d = new TextDecoder("utf-8").decode(
-          await reader.readCompletely(rd),
-        );
+        const d = strings.toString(await reader.readCompletely(rd), "utf-8");
         self.step.resolve(
           self.stepHookOutputPrompt("Waiting for server hook", d),
         );
@@ -411,7 +387,6 @@ class Wizard {
             ),
           ),
         );
-
         self.history.save(
           self.info.name() + ":" + configInput.host,
           configInput.host,
@@ -423,9 +398,8 @@ class Wizard {
         );
       },
       async "connect.failed"(rd) {
-        let readed = await reader.readCompletely(rd),
-          message = new TextDecoder("utf-8").decode(readed.buffer);
-
+        const read = await reader.readCompletely(rd),
+          message = strings.toString(read.buffer, "utf-8");
         self.step.resolve(self.stepErrorDone("Connection failed", message));
       },
       "@inband"(rd) {},
@@ -436,14 +410,12 @@ class Wizard {
 
   stepInitialPrompt() {
     const self = this;
-
     return command.prompt(
       "Telnet",
       "Teletype Network",
       "Connect",
       (r) => {
         self.hasStarted = true;
-
         self.streams.request(COMMAND_ID, (sd) => {
           return self.buildCommand(
             sd,
@@ -455,7 +427,6 @@ class Wizard {
             self.session,
           );
         });
-
         self.step.resolve(self.stepWaitForAcceptWait());
       },
       () => {},
@@ -530,15 +501,12 @@ class Executor extends Wizard {
       controls,
       history,
     );
-
     this.config = config;
   }
 
   stepInitialPrompt() {
     const self = this;
-
     self.hasStarted = true;
-
     self.streams.request(COMMAND_ID, (sd) => {
       return self.buildCommand(
         sd,
@@ -550,7 +518,6 @@ class Executor extends Wizard {
         self.session,
       );
     });
-
     return self.stepWaitForAcceptWait();
   }
 }
@@ -620,11 +587,9 @@ export class Command {
 
   launch(info, launcher, streams, subs, controls, history) {
     const d = launcher.split("|", 2);
-
     if (d.length <= 0) {
       throw new Exception('Given launcher "' + launcher + '" was invalid');
     }
-
     try {
       initialFieldDef["Host"].verify(d[0]);
     } catch (e) {
@@ -632,14 +597,11 @@ export class Command {
         'Given launcher "' + launcher + '" was invalid: ' + e,
       );
     }
-
     let charset = "utf-8";
-
     if (d.length > 1) {
       // TODO: Remove this check after depreciation period.
       try {
         initialFieldDef["Encoding"].verify(d[1]);
-
         charset = d[1];
       } catch (e) {
         throw new Exception(
@@ -647,7 +609,6 @@ export class Command {
         );
       }
     }
-
     return this.execute(
       info,
       {
@@ -669,11 +630,9 @@ export class Command {
 
   represet(preset) {
     const host = preset.host();
-
     if (host.length > 0) {
       preset.insertMeta("Host", host);
     }
-
     return preset;
   }
 }

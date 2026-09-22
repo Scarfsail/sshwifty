@@ -51,18 +51,14 @@ export class Sender {
         false,
       );
     }
-
     let reqHeader = new header.Header(header.STREAM),
       stHeader = new header.Stream(0, 0),
       d = new Uint8Array(data.length + 3);
-
     reqHeader.set(this.id);
     stHeader.set(marker, data.length);
-
     d[0] = reqHeader.value();
     d.set(stHeader.buffer(), 1);
     d.set(data, 3);
-
     return this.sender.send(d);
   }
 
@@ -83,22 +79,16 @@ export class Sender {
         false,
       );
     }
-
     let dataSeg = common.separateBuffer(data, header.STREAM_MAX_LENGTH),
       reqHeader = new header.Header(header.STREAM);
-
     reqHeader.set(this.id);
-
     for (let i in dataSeg) {
       let stHeader = new header.Stream(0, 0),
         d = new Uint8Array(dataSeg[i].length + 3);
-
       stHeader.set(marker, dataSeg[i].length);
-
       d[0] = reqHeader.value();
       d.set(stHeader.buffer(), 1);
       d.set(dataSeg[i], 3);
-
       await this.sender.send(d);
     }
   }
@@ -118,11 +108,8 @@ export class Sender {
         false,
       );
     }
-
     let reqHeader = new header.Header(signal);
-
     reqHeader.set(this.id);
-
     return this.sender.send(new Uint8Array([reqHeader.value()]));
   }
 
@@ -134,11 +121,8 @@ export class Sender {
     if (this.closed) {
       return;
     }
-
     let r = this.signal(header.CLOSE);
-
     this.closed = true;
-
     return r;
   }
 }
@@ -178,14 +162,11 @@ export class InitialSender {
     let reqHeader = new header.Header(header.STREAM),
       stHeader = new header.InitialStream(0, 0),
       d = new Uint8Array(data.length + 3);
-
     reqHeader.set(this.id);
     stHeader.set(this.command, data.length, true);
-
     d[0] = reqHeader.value();
     d.set(stHeader.buffer(), 1);
     d.set(data, 3);
-
     return this.sender.send(d);
   }
 }
@@ -251,10 +232,8 @@ export class Stream {
         false,
       );
     }
-
     this.isInitializing = true;
     this.command = commandBuilder(new Sender(this.id, sd));
-
     return this.command.run(new InitialSender(this.id, commandID, sd));
   }
 
@@ -273,22 +252,17 @@ export class Stream {
         false,
       );
     }
-
     if (this.isShuttingDown) {
       throw new Exception(
         "Cannot initialize a stream that is about to shutdown",
         false,
       );
     }
-
     this.command.initialize(hd);
-
     if (!hd.success()) {
       this.clear();
-
       return;
     }
-
     this.isInitializing = false;
   }
 
@@ -301,18 +275,16 @@ export class Stream {
    * @throws {Exception} When the stream is not running, or shutting down
    *
    */
-  tick(streamHeader, rd) {
+  async tick(streamHeader, rd) {
     if (!this.running()) {
       throw new Exception("Cannot tick a stream that is not running", false);
     }
-
     if (this.isShuttingDown) {
       throw new Exception(
         "Cannot tick a stream that is about to shutdown",
         false,
       );
     }
-
     return this.command.tick(streamHeader, rd);
   }
 
@@ -326,14 +298,12 @@ export class Stream {
     if (!this.running()) {
       throw new Exception("Cannot close a stream that is not running", false);
     }
-
     if (this.isShuttingDown) {
       throw new Exception(
         "Cannot close a stream that is about to shutdown",
         false,
       );
     }
-
     this.isShuttingDown = true;
     this.command.close();
   }
@@ -348,7 +318,6 @@ export class Stream {
     if (!this.running()) {
       throw new Exception("Cannot close a stream that is not running", false);
     }
-
     if (!this.isShuttingDown) {
       throw new Exception(
         "Can't complete current stream because Close " +
@@ -356,7 +325,6 @@ export class Stream {
         false,
       );
     }
-
     this.command.completed();
     this.clear();
   }

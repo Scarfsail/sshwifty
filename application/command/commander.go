@@ -31,6 +31,7 @@ import (
 type Configuration struct {
 	Dial        network.Dial
 	DialTimeout time.Duration
+	AuthRetries int
 }
 
 // Commander command control
