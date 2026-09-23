@@ -53,6 +53,7 @@ const mainTemplate = `
   :preset-data="presetData.presets"
   :restricted-to-presets="presetData.restricted"
   :bypass-clipboard-write-approval="bypassClipboardWriteApproval"
+  :skip-preset-prompt-when-all-set="skipPresetPromptWhenAllSet"
   :view-port="viewPort"
   @navigate-to="changeURLHash"
   @tab-opened="tabOpened"
@@ -118,6 +119,7 @@ function startApp(rootEl) {
           restricted: false,
         },
         bypassClipboardWriteApproval: false,
+        skipPresetPromptWhenAllSet: false,
         authErr: "",
         loadErr: "",
         socket: null,
@@ -246,6 +248,8 @@ function startApp(rootEl) {
         };
         this.bypassClipboardWriteApproval =
           authData.bypass_clipboard_write_approval === true;
+        this.skipPresetPromptWhenAllSet =
+          authData.skip_preset_prompt_when_all_set === true;
         this.socket = this.buildSocket(
           key,
           authResult.timeout,

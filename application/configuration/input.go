@@ -162,6 +162,10 @@ type commonInput struct {
 	// Allow trusted remotes to write to the system clipboard without
 	// requiring the user approval prompt
 	BypassClipboardWriteApproval bool
+
+	// Connect to a preset right away, without showing the initial prompt,
+	// when the preset has all required fields set
+	SkipPresetPromptWhenAllSet bool
 }
 
 // concretize creates Configuration based on current commonInput
@@ -196,5 +200,6 @@ func (f commonInput) concretize() (Configuration, error) {
 		Presets:                      presets,
 		OnlyAllowPresetRemotes:       f.OnlyAllowPresetRemotes,
 		BypassClipboardWriteApproval: f.BypassClipboardWriteApproval,
+		SkipPresetPromptWhenAllSet:   f.SkipPresetPromptWhenAllSet,
 	}, nil
 }

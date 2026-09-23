@@ -51,12 +51,14 @@ type socketAccessConfiguration struct {
 	Presets                      []socketRemotePreset `json:"presets"`
 	ServerMessage                string               `json:"server_message"`
 	BypassClipboardWriteApproval bool                 `json:"bypass_clipboard_write_approval"`
+	SkipPresetPromptWhenAllSet   bool                 `json:"skip_preset_prompt_when_all_set"`
 }
 
 func newSocketAccessConfiguration(
 	remotes []configuration.Preset,
 	serverMessage string,
 	bypassClipboardWriteApproval bool,
+	skipPresetPromptWhenAllSet bool,
 ) socketAccessConfiguration {
 	presets := make([]socketRemotePreset, len(remotes))
 	for i := range presets {
@@ -72,6 +74,7 @@ func newSocketAccessConfiguration(
 		Presets:                      presets,
 		ServerMessage:                parseServerMessage(html.EscapeString(serverMessage)),
 		BypassClipboardWriteApproval: bypassClipboardWriteApproval,
+		SkipPresetPromptWhenAllSet:   skipPresetPromptWhenAllSet,
 	}
 }
 
@@ -99,6 +102,7 @@ func newSocketVerification(
 				commCfg.Presets,
 				srvCfg.ServerMessage,
 				commCfg.BypassClipboardWriteApproval,
+				commCfg.SkipPresetPromptWhenAllSet,
 			),
 		),
 	}

@@ -420,7 +420,16 @@ Here is all the options of the configuration file:
   // NOTICE: You can only configure BypassClipboardWriteApproval through a
   //         config file. This option is not supported when you are
   //         configuring with environment variables
-  "BypassClipboardWriteApproval": false
+  "BypassClipboardWriteApproval": false,
+
+  // Connect to an SSH preset right away, without showing the "SSH / Secure
+  // Shell Host" summary form, when the preset already has a valid Host,
+  // User and Authentication set. Defaults to false.
+  //
+  // NOTICE: You can only configure SkipPresetPromptWhenAllSet through a
+  //         config file. This option is not supported when you are
+  //         configuring with environment variables
+  "SkipPresetPromptWhenAllSet": false
 }
 ```
 
