@@ -136,6 +136,9 @@ func Environ() Loader {
 			OnlyAllowPresetRemotes: len(
 				GetEnv("SSHWIFTY_ONLYALLOWPRESETREMOTES"),
 			) > 0,
+			EnabledProtocols: strings.Split(
+				GetEnv("SSHWIFTY_ENABLEDPROTOCOLS"), ",",
+			),
 		}.concretize()
 		return environTypeName, cfg, err
 	}

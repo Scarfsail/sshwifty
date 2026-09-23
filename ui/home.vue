@@ -99,7 +99,7 @@
       :connectors="connector.connectors"
       :presets="presets"
       :restricted-to-presets="restrictedToPresets"
-      :knowns="connector.knowns"
+      :knowns="enabledKnowns"
       :knowns-launcher-builder="buildknownLauncher"
       :knowns-export="exportKnowns"
       :knowns-import="importKnowns"
@@ -254,6 +254,13 @@ export default {
     // produced one yet. A reconnect can only start when it is free
     connectorBusy() {
       return this.connector.inputting || this.connector.acquired;
+    },
+    // enabledKnowns hides history records of protocols the server has not
+    // enabled. The records are kept, and reappear once re-enabled
+    enabledKnowns() {
+      return this.connector.knowns.filter(
+        (k) => this.getConnectorByType(k.type) !== null,
+      );
     },
   },
   mounted() {

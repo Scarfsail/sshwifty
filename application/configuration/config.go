@@ -40,6 +40,7 @@ type Configuration struct {
 	OnlyAllowPresetRemotes       bool
 	BypassClipboardWriteApproval bool
 	SkipPresetPromptWhenAllSet   bool
+	EnabledProtocols             []string
 }
 
 // Verify verifies current setting

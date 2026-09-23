@@ -82,14 +82,30 @@ func (a Application) run(
 		return false, cErr
 	}
 
+	// Only keep the enabled protocols
+	commands, err = commands.Enable(c.EnabledProtocols)
+
+	if err != nil {
+		a.logger.Error("Unable to enable protocols: %s", err)
+
+		return false, err
+	}
+
 	// Allowing command to alter presets
-	c.Presets, err = commands.Reconfigure(c.Presets)
+	newPresets, err := commands.Reconfigure(c.Presets)
 
 	if err != nil {
 		a.logger.Error("Unable to reconfigure presets: %s", err)
 
 		return false, err
 	}
+
+	if ignored := len(c.Presets) - len(newPresets); ignored > 0 {
+		a.logger.Warning("%d preset(s) were ignored because their Type is "+
+			"unknown or not enabled", ignored)
+	}
+
+	c.Presets = newPresets
 
 	// Verify all configuration
 	err = c.Verify()

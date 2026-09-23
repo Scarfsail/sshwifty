@@ -165,7 +165,7 @@ func Builder(cmds command.Commands) server.HandlerBuilder {
 			logger:          logger,
 			homeCtl:         home{},
 			socketCtl:       socketCtl,
-			socketVerifyCtl: newSocketVerification(socketCtl, cfg, commonCfg),
+			socketVerifyCtl: newSocketVerification(socketCtl, cfg, commonCfg, cmds),
 		}
 	}
 }

@@ -404,6 +404,15 @@ Here is all the options of the configuration file:
   //         environment variables
   "OnlyAllowPresetRemotes": false,
 
+  // Protocols to enable, for example ["SSH"] to offer SSH only. Names are
+  // matched case-insensitively, and an unknown name stops Sshwifty from
+  // starting. Presets and known remotes of a protocol that is not enabled
+  // are hidden. Defaults to [] which enables every protocol (SSH and Telnet)
+  //
+  // When configuring with environment variables, set
+  // SSHWIFTY_ENABLEDPROTOCOLS to a comma-separated list, e.g. "SSH,Telnet"
+  "EnabledProtocols": [],
+
   // Allow trusted remote terminal output (OSC 52) to write straight to the
   // browser clipboard without going through Sshwifty's clipboard write
   // approval bar. Defaults to false.
@@ -478,6 +487,7 @@ SSHWIFTY_TLSCERTIFICATEKEYFILE
 SSHWIFTY_SERVERMESSAGE
 SSHWIFTY_PRESETS
 SSHWIFTY_ONLYALLOWPRESETREMOTES
+SSHWIFTY_ENABLEDPROTOCOLS
 ```
 
 These options are correspond to their counterparts in the configuration file.
