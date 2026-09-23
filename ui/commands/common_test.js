@@ -243,4 +243,13 @@ describe("Common", () => {
       assert.strictEqual(hostport.port, tests[i].expectedPort);
     }
   });
+
+  it("sameHostPort", () => {
+    assert.strictEqual(common.sameHostPort("host", "host:22", 22), true);
+    assert.strictEqual(common.sameHostPort("host", "host:23", 22), false);
+    assert.strictEqual(common.sameHostPort("host", "other", 22), false);
+    assert.strictEqual(common.sameHostPort("host:x", "host", 22), false);
+    // A hostname whose bytes equal an IPv4 address's octets
+    assert.strictEqual(common.sameHostPort("abcd", "97.98.99.100", 22), false);
+  });
 });

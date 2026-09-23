@@ -384,7 +384,11 @@ export function sameHostPort(a, b, defPort) {
   try {
     const x = splitHostPort(a, defPort),
       y = splitHostPort(b, defPort);
-    return x.port === y.port && x.addr.join(",") === y.addr.join(",");
+    return (
+      x.type === y.type &&
+      x.port === y.port &&
+      x.addr.join(",") === y.addr.join(",")
+    );
   } catch (e) {
     return false;
   }
