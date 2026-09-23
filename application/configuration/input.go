@@ -166,6 +166,9 @@ type commonInput struct {
 	// Connect to a preset right away, without showing the initial prompt,
 	// when the preset has all required fields set
 	SkipPresetPromptWhenAllSet bool
+
+	// Protocols to enable, empty to enable all of them
+	EnabledProtocols []string
 }
 
 // concretize creates Configuration based on current commonInput
@@ -180,6 +183,12 @@ func (f commonInput) concretize() (Configuration, error) {
 	presets, err := f.Presets.concretize()
 	if err != nil {
 		return Configuration{}, err
+	}
+	protocols := make([]string, 0, len(f.EnabledProtocols))
+	for _, p := range f.EnabledProtocols {
+		if p = strings.TrimSpace(p); len(p) > 0 {
+			protocols = append(protocols, p)
+		}
 	}
 	return Configuration{
 		HostName:  f.HostName,
@@ -201,5 +210,6 @@ func (f commonInput) concretize() (Configuration, error) {
 		OnlyAllowPresetRemotes:       f.OnlyAllowPresetRemotes,
 		BypassClipboardWriteApproval: f.BypassClipboardWriteApproval,
 		SkipPresetPromptWhenAllSet:   f.SkipPresetPromptWhenAllSet,
+		EnabledProtocols:             protocols,
 	}, nil
 }

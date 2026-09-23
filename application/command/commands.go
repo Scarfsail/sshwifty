@@ -20,6 +20,7 @@ package command
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/nirui/sshwifty/application/configuration"
 	"github.com/nirui/sshwifty/application/log"
@@ -80,6 +81,42 @@ func (c *Commands) Register(
 	}
 
 	(*c)[id] = Register(name, cb, ps)
+}
+
+// Enable returns a copy of the commands in which only the commands named in
+// `names` (case-insensitive) remain registered. Wire IDs are kept unchanged.
+// Empty `names` enables all commands
+func (c Commands) Enable(names []string) (Commands, error) {
+	if len(names) <= 0 {
+		return c, nil
+	}
+	var enabled Commands
+	for _, n := range names {
+		found := false
+		for i := range c {
+			if c[i].command == nil || !strings.EqualFold(c[i].name, n) {
+				continue
+			}
+			enabled[i] = c[i]
+			found = true
+		}
+		if !found {
+			return Commands{}, fmt.Errorf("unknown protocol %q", n)
+		}
+	}
+	return enabled, nil
+}
+
+// Names returns names of all registered commands in ID order
+func (c Commands) Names() []string {
+	names := make([]string, 0, len(c))
+	for i := range c {
+		if c[i].command == nil {
+			continue
+		}
+		names = append(names, c[i].name)
+	}
+	return names
 }
 
 // Run creates command executer

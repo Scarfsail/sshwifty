@@ -58,6 +58,7 @@
     }
   ],
   "OnlyAllowPresetRemotes": false,
+  "EnabledProtocols": [],
   "BypassClipboardWriteApproval": false,
   "SkipPresetPromptWhenAllSet": false
 }

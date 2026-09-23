@@ -27,6 +27,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/nirui/sshwifty/application/command"
 	"github.com/nirui/sshwifty/application/configuration"
 	"github.com/nirui/sshwifty/application/log"
 )
@@ -52,6 +53,7 @@ type socketAccessConfiguration struct {
 	ServerMessage                string               `json:"server_message"`
 	BypassClipboardWriteApproval bool                 `json:"bypass_clipboard_write_approval"`
 	SkipPresetPromptWhenAllSet   bool                 `json:"skip_preset_prompt_when_all_set"`
+	EnabledProtocols             []string             `json:"enabled_protocols"`
 }
 
 func newSocketAccessConfiguration(
@@ -59,6 +61,7 @@ func newSocketAccessConfiguration(
 	serverMessage string,
 	bypassClipboardWriteApproval bool,
 	skipPresetPromptWhenAllSet bool,
+	enabledProtocols []string,
 ) socketAccessConfiguration {
 	presets := make([]socketRemotePreset, len(remotes))
 	for i := range presets {
@@ -75,6 +78,7 @@ func newSocketAccessConfiguration(
 		ServerMessage:                parseServerMessage(html.EscapeString(serverMessage)),
 		BypassClipboardWriteApproval: bypassClipboardWriteApproval,
 		SkipPresetPromptWhenAllSet:   skipPresetPromptWhenAllSet,
+		EnabledProtocols:             enabledProtocols,
 	}
 }
 
@@ -90,6 +94,7 @@ func newSocketVerification(
 	s socket,
 	srvCfg configuration.Server,
 	commCfg configuration.Common,
+	cmds command.Commands,
 ) socketVerification {
 	return socketVerification{
 		socket: s,
@@ -103,6 +108,7 @@ func newSocketVerification(
 				srvCfg.ServerMessage,
 				commCfg.BypassClipboardWriteApproval,
 				commCfg.SkipPresetPromptWhenAllSet,
+				cmds.Names(),
 			),
 		),
 	}

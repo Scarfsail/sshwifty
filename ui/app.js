@@ -72,6 +72,10 @@ const socksInterface = "/sshwifty/socket";
 const socksVerificationInterface = socksInterface + "/verify";
 const socksKeyTimeTruncater = 100 * 1000;
 
+function allCommands() {
+  return [new telnet.Command(), new ssh.Command()];
+}
+
 function startApp(rootEl) {
   const pageTitle = document.title;
 
@@ -127,7 +131,7 @@ function startApp(rootEl) {
           new telnetctl.Telnet(uiControlColors),
           new sshctl.SSH(uiControlColors),
         ]),
-        commands: new Commands([new telnet.Command(), new ssh.Command()]),
+        commands: new Commands(allCommands()),
         tabUpdateIndicator: null,
         viewPort: {
           dim: {
@@ -250,6 +254,12 @@ function startApp(rootEl) {
           authData.bypass_clipboard_write_approval === true;
         this.skipPresetPromptWhenAllSet =
           authData.skip_preset_prompt_when_all_set === true;
+        const enabled = authData.enabled_protocols
+          ? authData.enabled_protocols
+          : [];
+        this.commands = new Commands(
+          allCommands().filter((c) => enabled.includes(c.name())),
+        );
         this.socket = this.buildSocket(
           key,
           authResult.timeout,

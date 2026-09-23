@@ -152,7 +152,12 @@ export default {
       // The window is never destroyed, so without this it would keep both
       // the tab the user last switched to and a choice made back when there
       // was nothing known yet
-      this.tab = this.defaultTab();
+      if (this.defaultTab() === "new") {
+        this.openNewTab();
+        return;
+      }
+
+      this.tab = "known";
     },
   },
   methods: {
@@ -172,7 +177,22 @@ export default {
         return;
       }
 
+      if (to === "new") {
+        this.openNewTab();
+        return;
+      }
+
       this.tab = to;
+    },
+    // With only one protocol there is nothing to pick, so go straight to its
+    // form. Only on opening: after the user cancels the form the one-entry
+    // list stays, re-opening it here would loop
+    openNewTab() {
+      this.tab = "new";
+
+      if (this.connectors.length === 1 && !this.inputting && !this.busy) {
+        this.selectConnector(this.connectors[0]);
+      }
     },
     selectConnector(connector) {
       if (this.inputting) {
