@@ -635,4 +635,16 @@ export class Command {
     }
     return preset;
   }
+
+  matchesKnown(preset, known) {
+    return (
+      known.type === this.name() &&
+      !!known.data &&
+      common.sameHostPort(
+        preset.metaDefault("Host", ""),
+        known.data.host,
+        DEFAULT_PORT,
+      )
+    );
+  }
 }

@@ -152,4 +152,80 @@ describe("SSH", () => {
       null,
     );
   });
+
+  const known = (type, host, user) => ({
+    type: type,
+    data: { host: host, user: user },
+  });
+  const cmd = new ssh.Command();
+
+  it("matchesKnown matches host with and without default port", () => {
+    const p = preset({ Host: "192.168.0.41", User: "root" });
+    assert.strictEqual(
+      cmd.matchesKnown(p, known("SSH", "192.168.0.41", "root")),
+      true,
+    );
+    assert.strictEqual(
+      cmd.matchesKnown(p, known("SSH", "192.168.0.41:22", "root")),
+      true,
+    );
+    assert.strictEqual(
+      cmd.matchesKnown(p, known("SSH", "192.168.0.41:2222", "root")),
+      false,
+    );
+  });
+
+  it("matchesKnown matches an explicit port", () => {
+    const p = preset({ Host: "192.168.0.41:2222" });
+    assert.strictEqual(
+      cmd.matchesKnown(p, known("SSH", "192.168.0.41:2222", "root")),
+      true,
+    );
+    assert.strictEqual(
+      cmd.matchesKnown(p, known("SSH", "192.168.0.41", "root")),
+      false,
+    );
+  });
+
+  it("matchesKnown requires the same user when User is set", () => {
+    const p = preset({ Host: "192.168.0.41", User: "root" });
+    assert.strictEqual(
+      cmd.matchesKnown(p, known("SSH", "192.168.0.41", "admin")),
+      false,
+    );
+  });
+
+  it("matchesKnown matches any user when User is unset", () => {
+    const p = preset({ Host: "192.168.0.41" });
+    assert.strictEqual(
+      cmd.matchesKnown(p, known("SSH", "192.168.0.41", "root")),
+      true,
+    );
+    assert.strictEqual(
+      cmd.matchesKnown(p, known("SSH", "192.168.0.41", "admin")),
+      true,
+    );
+  });
+
+  it("matchesKnown does not match another command type", () => {
+    const p = preset({ Host: "192.168.0.41" });
+    assert.strictEqual(
+      cmd.matchesKnown(p, known("Telnet", "192.168.0.41", "")),
+      false,
+    );
+  });
+
+  it("matchesKnown does not match an invalid host", () => {
+    assert.strictEqual(
+      cmd.matchesKnown(
+        preset({ Host: "not a host" }),
+        known("SSH", "not a host", "root"),
+      ),
+      false,
+    );
+    assert.strictEqual(
+      cmd.matchesKnown(preset({}), known("SSH", "192.168.0.41", "root")),
+      false,
+    );
+  });
 });

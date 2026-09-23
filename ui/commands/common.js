@@ -369,3 +369,23 @@ export function splitHostPort(d, defPort) {
     port: portNum,
   };
 }
+
+/**
+ * Return whether two host addresses point to the same host and port
+ *
+ * @param {string} a Host, with or without port
+ * @param {string} b Host, with or without port
+ * @param {number} defPort Port used when a host has none
+ *
+ * @returns {boolean} true when both are valid and equal, false otherwise
+ *
+ */
+export function sameHostPort(a, b, defPort) {
+  try {
+    const x = splitHostPort(a, defPort),
+      y = splitHostPort(b, defPort);
+    return x.port === y.port && x.addr.join(",") === y.addr.join(",");
+  } catch (e) {
+    return false;
+  }
+}
