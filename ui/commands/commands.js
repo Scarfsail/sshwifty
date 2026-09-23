@@ -599,6 +599,9 @@ class Builder {
     this.represeter = (n) => {
       return command.represet(n);
     };
+    this.matcher = (p, k) => {
+      return command.matchesKnown(p, k);
+    };
     this.wizarder = (n, i, r, u, y, x, l, p, k) => {
       return command.wizard(n, i, r, u, y, x, l, p, k);
     };
@@ -782,6 +785,18 @@ class Builder {
   represet(n) {
     return this.represeter(n);
   }
+
+  /**
+   * Return whether the given history record belongs to the preset
+   *
+   * @param {presets.Preset} preset preset
+   * @param {object} known History record, as returned by History.all()
+   *
+   * @return {boolean} true when the record matches the preset
+   */
+  matchesKnown(preset, known) {
+    return this.matcher(preset, known);
+  }
 }
 
 export class Preset {
@@ -854,4 +869,32 @@ export class Commands {
     }
     return pp;
   }
+}
+
+/**
+ * Group history records under the presets they belong to
+ *
+ * @param {Array<Preset>} presets Presets, as returned by mergePresets
+ * @param {Array<object>} knowns History records, as returned by History.all()
+ *
+ * @returns {object} Presets with their matched records, and the records that
+ *                   matched no preset. Records are ordered newest first
+ *
+ */
+export function groupKnowns(presets, knowns) {
+  // Imported records are appended regardless of their age, so the array
+  // order can't be trusted
+  const newest = knowns.slice().sort((a, b) => b.last - a.last),
+    matched = new Set();
+  const grouped = presets.map((preset) => {
+    const ks = newest.filter((k) =>
+      preset.command.matchesKnown(preset.preset, k),
+    );
+    ks.forEach((k) => matched.add(k));
+    return { preset: preset, knowns: ks };
+  });
+  return {
+    presets: grouped,
+    others: newest.filter((k) => !matched.has(k)),
+  };
 }

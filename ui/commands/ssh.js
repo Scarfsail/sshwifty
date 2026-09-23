@@ -77,12 +77,6 @@ const HostMaxSearchResults = 3;
  *
  */
 export function findHistoryFingerprint(records, host) {
-  let target = null;
-  try {
-    target = common.splitHostPort(host, DEFAULT_PORT);
-  } catch (e) {
-    return "";
-  }
   let found = null;
   for (let i = 0; i < records.length; i++) {
     const r = records[i];
@@ -92,16 +86,7 @@ export function findHistoryFingerprint(records, host) {
     if (found && r.last <= found.last) {
       continue;
     }
-    let addr = null;
-    try {
-      addr = common.splitHostPort(r.data.host, DEFAULT_PORT);
-    } catch (e) {
-      continue;
-    }
-    if (
-      addr.port !== target.port ||
-      addr.addr.join(",") !== target.addr.join(",")
-    ) {
+    if (!common.sameHostPort(r.data.host, host, DEFAULT_PORT)) {
       continue;
     }
     found = r;
@@ -1352,5 +1337,21 @@ export class Command {
       preset.insertMeta("Host", host);
     }
     return preset;
+  }
+
+  matchesKnown(preset, known) {
+    if (
+      known.type !== this.name() ||
+      !known.data ||
+      !common.sameHostPort(
+        preset.metaDefault("Host", ""),
+        known.data.host,
+        DEFAULT_PORT,
+      )
+    ) {
+      return false;
+    }
+    const user = preset.metaDefault("User", "");
+    return user.length <= 0 || user === known.data.user;
   }
 }

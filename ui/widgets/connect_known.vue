@@ -19,99 +19,88 @@
 
 <template>
   <div id="connect-known-list" :class="{ reloaded: reloaded }">
-    <div
-      v-if="knownList.length <= 0 && presets <= 0"
-      id="connect-known-list-empty"
-    >
+    <div v-if="sections.length <= 0" id="connect-known-list-empty">
       No known remote available
     </div>
     <div v-else>
-      <div v-if="knownList.length > 0" id="connect-known-list-list">
-        <h3>Connected before</h3>
+      <div
+        v-for="(section, sk) in sections"
+        :key="section.title"
+        class="known-section"
+        :class="{ 'last-planel': sk > 0 }"
+      >
+        <h3>{{ section.title }}</h3>
 
         <ul class="hlst lstcl1">
-          <li v-for="(known, kk) in knownList" :key="kk">
+          <li
+            v-for="card in section.cards"
+            :key="card.key"
+            class="known-card"
+            :class="{ disabled: card.preset && presetDisabled(card.preset) }"
+          >
             <div class="labels">
-              <span
-                class="type"
-                :style="'background-color: ' + known.data.color"
-              >
-                {{ known.data.type }}
+              <span class="type" :style="'background-color: ' + card.color">
+                {{ card.type }}
               </span>
 
-              <a
-                class="opt link"
-                href="javascript:;"
-                @click="launcher(known, $event)"
-              >
-                {{ known.copyStatus }}
-              </a>
-
-              <a
-                v-if="!known.data.session"
-                class="opt del"
-                href="javascript:;"
-                @click="remove(known.data.uid)"
-              >
-                Remove
-              </a>
-              <a
-                v-else
-                class="opt clr"
-                href="javascript:;"
-                title="Clear session data"
-                @click="clearSession(known.data.uid)"
-              >
-                Clear
-              </a>
-            </div>
-
-            <div class="lst-wrap" @click="select(known.data)">
-              <h4
-                :title="known.data.title"
-                :class="{ highlight: known.data.session }"
-              >
-                {{ known.data.title }}
-              </h4>
-              Last: {{ known.data.last.toLocaleString() }}
-            </div>
-          </li>
-        </ul>
-      </div>
-
-      <div
-        v-if="presets.length > 0"
-        id="connect-known-list-presets"
-        :class="{
-          'last-planel': knownList.length > 0,
-        }"
-      >
-        <h3>Presets</h3>
-
-        <ul class="hlst lstcl2">
-          <li
-            v-for="(preset, pk) in presets"
-            :key="pk"
-            :class="{ disabled: presetDisabled(preset) }"
-          >
-            <div class="lst-wrap" @click="selectPreset(preset)">
-              <div class="labels">
-                <span
-                  class="type"
-                  :style="'background-color: ' + preset.command.color()"
+              <template v-if="card.known">
+                <a
+                  class="opt link"
+                  href="javascript:;"
+                  @click="launcher(card.known, $event)"
                 >
-                  {{ preset.command.name() }}
-                </span>
-              </div>
+                  {{ copying[card.known.uid] || "Copy link" }}
+                </a>
 
-              <h4 :title="preset.preset.title()">
-                {{ preset.preset.title() }}
+                <a
+                  v-if="card.known.session"
+                  class="opt clr"
+                  href="javascript:;"
+                  title="Clear session data"
+                  @click="clearSession(card.known.uid)"
+                >
+                  Clear
+                </a>
+                <a
+                  v-else-if="card.preset"
+                  class="opt del"
+                  href="javascript:;"
+                  title="Forget every connection to this preset"
+                  @click="forget(card.knowns)"
+                >
+                  Forget
+                </a>
+                <a
+                  v-else
+                  class="opt del"
+                  href="javascript:;"
+                  @click="remove(card.known.uid)"
+                >
+                  Remove
+                </a>
+              </template>
+            </div>
+
+            <div class="lst-wrap" @click="selectCard(card)">
+              <h4
+                :title="card.title"
+                :class="{ highlight: card.known && card.known.session }"
+              >
+                {{ card.title }}
               </h4>
+              <div class="info">
+                <template v-if="card.known">
+                  Last: {{ card.known.last.toLocaleString() }}
+                </template>
+              </div>
             </div>
           </li>
         </ul>
 
-        <div v-if="restrictedToPresets" id="connect-known-list-presets-alert">
+        <div
+          v-if="section.presets && restrictedToPresets"
+          id="connect-known-list-presets-alert"
+        >
           The operator has restricted the outgoing connections. You can only
           connect to remotes from the pre-defined presets.
         </div>
@@ -129,6 +118,8 @@
 
 <script>
 import "./connect_known.css";
+
+import { groupKnowns } from "../commands/commands.js";
 
 export default {
   props: {
@@ -159,20 +150,49 @@ export default {
   },
   data() {
     return {
-      knownList: [],
+      copying: {},
       reloaded: false,
       busy: false,
     };
   },
+  computed: {
+    sections() {
+      const g = groupKnowns(this.presets, this.knowns);
+      return [
+        {
+          title: "Presets",
+          presets: true,
+          cards: g.presets.map((p, i) => ({
+            key: "preset-" + i,
+            type: p.preset.command.name(),
+            color: p.preset.command.color(),
+            title: p.preset.preset.title(),
+            preset: p.preset,
+            known: p.knowns.length > 0 ? p.knowns[0] : null,
+            knowns: p.knowns,
+          })),
+        },
+        {
+          title: "Other recent",
+          presets: false,
+          cards: g.others.map((k) => ({
+            key: "known-" + k.uid,
+            type: k.type,
+            color: k.color,
+            title: k.title,
+            preset: null,
+            known: k,
+            knowns: [k],
+          })),
+        },
+      ].filter((s) => s.cards.length > 0);
+    },
+  },
   watch: {
-    knowns(newVal) {
+    knowns(newVal, oldVal) {
       // Only play reload animation when we're adding data into the records,
       // not reducing
-      const playReloaded = newVal.length > this.knownList.length;
-
-      this.reload(newVal);
-
-      if (!playReloaded) {
+      if (newVal.length <= oldVal.length) {
         return;
       }
 
@@ -184,19 +204,12 @@ export default {
       }, 500);
     },
   },
-  mounted() {
-    this.reload(this.knowns);
-  },
   methods: {
-    reload(knownList) {
-      this.knownList = [];
-
-      for (let i in knownList) {
-        this.knownList.unshift({
-          data: knownList[i],
-          copying: false,
-          copyStatus: "Copy link",
-        });
+    selectCard(card) {
+      if (card.preset) {
+        this.selectPreset(card.preset);
+      } else {
+        this.select(card.known);
       }
     },
     select(known) {
@@ -221,34 +234,28 @@ export default {
       this.$emit("select-preset", preset);
     },
     async launcher(known, ev) {
-      if (known.copying || this.busy) {
+      if (this.copying[known.uid] || this.busy) {
         return;
       }
 
       ev.preventDefault();
 
       this.busy = true;
-      known.copying = true;
-      known.copyStatus = "Copying";
+      this.$set(this.copying, known.uid, "Copying");
 
-      let lnk = this.launcherBuilder(known.data);
+      let lnk = this.launcherBuilder(known);
 
       try {
         await navigator.clipboard.writeText(lnk);
 
-        (() => {
-          known.copyStatus = "Copied!";
-        })();
+        this.copying[known.uid] = "Copied!";
       } catch (e) {
-        (() => {
-          known.copyStatus = "Failed";
-          ev.target.setAttribute("href", lnk);
-        })();
+        this.copying[known.uid] = "Failed";
+        ev.target.setAttribute("href", lnk);
       }
 
       setTimeout(() => {
-        known.copyStatus = "Copy link";
-        known.copying = false;
+        this.$delete(this.copying, known.uid);
       }, 2000);
 
       this.busy = false;
@@ -259,6 +266,15 @@ export default {
       }
 
       this.$emit("remove", uid);
+    },
+    forget(knowns) {
+      if (this.busy) {
+        return;
+      }
+
+      for (let i = 0; i < knowns.length; i++) {
+        this.$emit("remove", knowns[i].uid);
+      }
     },
     clearSession(uid) {
       if (this.busy) {
