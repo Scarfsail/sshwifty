@@ -39,6 +39,7 @@ type Configuration struct {
 	Presets                      []Preset
 	OnlyAllowPresetRemotes       bool
 	BypassClipboardWriteApproval bool
+	SkipPresetPromptWhenAllSet   bool
 }
 
 // Verify verifies current setting
@@ -97,6 +98,7 @@ func (c Configuration) Common() Common {
 		Hooks:                        c.hookSettings(),
 		OnlyAllowPresetRemotes:       c.OnlyAllowPresetRemotes,
 		BypassClipboardWriteApproval: c.BypassClipboardWriteApproval,
+		SkipPresetPromptWhenAllSet:   c.SkipPresetPromptWhenAllSet,
 	}
 }
 

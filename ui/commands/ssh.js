@@ -67,6 +67,75 @@ const FingerprintPromptVerifyMismatch = 0x02;
 
 const HostMaxSearchResults = 3;
 
+/**
+ * Find the newest fingerprint accepted for the given SSH host in history
+ *
+ * @param {Array<object>} records History records, as returned by History.all()
+ * @param {string} host Host, with or without port
+ *
+ * @returns {string} Fingerprint, or "" when none was found
+ *
+ */
+export function findHistoryFingerprint(records, host) {
+  let target = null;
+  try {
+    target = common.splitHostPort(host, DEFAULT_PORT);
+  } catch (e) {
+    return "";
+  }
+  let found = null;
+  for (let i = 0; i < records.length; i++) {
+    const r = records[i];
+    if (r.type !== "SSH" || !r.data || !r.data.fingerprint) {
+      continue;
+    }
+    if (found && r.last <= found.last) {
+      continue;
+    }
+    let addr = null;
+    try {
+      addr = common.splitHostPort(r.data.host, DEFAULT_PORT);
+    } catch (e) {
+      continue;
+    }
+    if (
+      addr.port !== target.port ||
+      addr.addr.join(",") !== target.addr.join(",")
+    ) {
+      continue;
+    }
+    found = r;
+  }
+  return found ? found.data.fingerprint : "";
+}
+
+/**
+ * Build connect config from a preset that has every required field set
+ *
+ * @param {presets.Preset} preset Preset
+ *
+ * @returns {object|null} Verified config, or null when a field is missing or
+ *                        invalid
+ *
+ */
+export function presetConnectConfig(preset) {
+  try {
+    const c = {
+      user: preset.meta("User"),
+      authentication: preset.meta("Authentication"),
+      host: preset.meta("Host"),
+      charset: preset.metaDefault("Encoding", "utf-8"),
+    };
+    initialFieldDef["User"].verify(c.user);
+    initialFieldDef["Host"].verify(c.host);
+    initialFieldDef["Authentication"].verify(c.authentication);
+    initialFieldDef["Encoding"].verify(c.charset);
+    return c;
+  } catch (e) {
+    return null;
+  }
+}
+
 class SSH {
   /**
    * constructor
@@ -540,6 +609,7 @@ class Wizard {
    * @param {subscribe.Subscribe} subs
    * @param {controls.Controls} controls
    * @param {history.History} history
+   * @param {boolean} skipPromptWhenAllSet
    *
    */
   constructor(
@@ -551,6 +621,7 @@ class Wizard {
     subs,
     controls,
     history,
+    skipPromptWhenAllSet,
   ) {
     this.info = info;
     this.preset = preset;
@@ -565,6 +636,7 @@ class Wizard {
     this.step = subs;
     this.controls = controls.get("SSH");
     this.history = history;
+    this.skipPromptWhenAllSet = skipPromptWhenAllSet;
     this.repeatedAuth = {};
   }
 
@@ -807,30 +879,46 @@ class Wizard {
     });
   }
 
+  startConnect(user, authentication, host, charset) {
+    const self = this;
+    let fingerprint = self.preset
+      ? self.preset.metaDefault("Fingerprint", "")
+      : "";
+    if (!fingerprint) {
+      fingerprint = findHistoryFingerprint(self.history.all(), host);
+    }
+    self.hasStarted = true;
+    self.streams.request(COMMAND_ID, (sd) => {
+      return self.buildCommand(
+        sd,
+        {
+          user: user,
+          authentication: authentication,
+          host: host,
+          charset: charset,
+          tabColor: self.preset ? self.preset.tabColor() : "",
+          fingerprint: fingerprint,
+        },
+        self.session,
+      );
+    });
+  }
+
   stepInitialPrompt() {
     let self = this;
+    const c = self.skipPromptWhenAllSet
+      ? presetConnectConfig(self.preset)
+      : null;
+    if (c) {
+      self.startConnect(c.user, c.authentication, c.host, c.charset);
+      return self.stepWaitForAcceptWait();
+    }
     return command.prompt(
       "SSH",
       "Secure Shell Host",
       "Connect",
       (r) => {
-        self.hasStarted = true;
-        self.streams.request(COMMAND_ID, (sd) => {
-          return self.buildCommand(
-            sd,
-            {
-              user: r.user,
-              authentication: r.authentication,
-              host: r.host,
-              charset: r.encoding,
-              tabColor: self.preset ? self.preset.tabColor() : "",
-              fingerprint: self.preset
-                ? self.preset.metaDefault("Fingerprint", "")
-                : "",
-            },
-            self.session,
-          );
-        });
+        self.startConnect(r.user, r.authentication, r.host, r.encoding);
         self.step.resolve(self.stepWaitForAcceptWait());
       },
       () => {},
@@ -1169,6 +1257,7 @@ export class Command {
     subs,
     controls,
     history,
+    skipPromptWhenAllSet,
   ) {
     return new Wizard(
       info,
@@ -1179,6 +1268,7 @@ export class Command {
       subs,
       controls,
       history,
+      skipPromptWhenAllSet,
     );
   }
 

@@ -599,8 +599,8 @@ class Builder {
     this.represeter = (n) => {
       return command.represet(n);
     };
-    this.wizarder = (n, i, r, u, y, x, l, p) => {
-      return command.wizard(n, i, r, u, y, x, l, p);
+    this.wizarder = (n, i, r, u, y, x, l, p, k) => {
+      return command.wizard(n, i, r, u, y, x, l, p, k);
     };
     this.executer = (n, i, r, u, y, x, l, p) => {
       return command.execute(n, i, r, u, y, x, l, p);
@@ -666,11 +666,22 @@ class Builder {
    * @param {object} session
    * @param {Array<string>} keptSessions
    * @param {function} done Callback which will be called when wizard is done
+   * @param {boolean} skipPromptWhenAllSet Skip the initial prompt when the
+   *                                       preset has all required fields
    *
    * @returns {Wizard} Command wizard
    *
    */
-  wizard(streams, controls, history, preset, session, keptSessions, done) {
+  wizard(
+    streams,
+    controls,
+    history,
+    preset,
+    session,
+    keptSessions,
+    done,
+    skipPromptWhenAllSet,
+  ) {
     let subs = new subscribe.Subscribe();
 
     return new Wizard(
@@ -683,6 +694,7 @@ class Builder {
         subs,
         controls,
         history,
+        skipPromptWhenAllSet,
       ),
       subs,
       done,

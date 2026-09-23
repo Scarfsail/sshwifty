@@ -33,4 +33,5 @@ type Common struct {
 	Hooks                        HookSettings
 	OnlyAllowPresetRemotes       bool
 	BypassClipboardWriteApproval bool
+	SkipPresetPromptWhenAllSet   bool
 }

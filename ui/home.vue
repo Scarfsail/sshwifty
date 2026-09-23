@@ -211,6 +211,10 @@ export default {
       type: Boolean,
       default: () => false,
     },
+    skipPresetPromptWhenAllSet: {
+      type: Boolean,
+      default: () => false,
+    },
     viewPort: {
       type: Object,
       default: () => null,
@@ -407,6 +411,7 @@ export default {
             null,
             [],
             () => {},
+            self.skipPresetPromptWhenAllSet,
           ),
         };
         self.connector.inputting = true;

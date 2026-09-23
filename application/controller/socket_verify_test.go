@@ -30,6 +30,7 @@ func TestNewSocketAccessConfigurationBypassClipboardWriteApprovalDefault(t *test
 		[]configuration.Preset{},
 		"",
 		false,
+		false,
 	)
 	if cfg.BypassClipboardWriteApproval {
 		t.Error("Expecting BypassClipboardWriteApproval to be false, " +
@@ -60,6 +61,7 @@ func TestNewSocketAccessConfigurationBypassClipboardWriteApprovalEnabled(t *test
 		[]configuration.Preset{},
 		"",
 		true,
+		false,
 	)
 	if !cfg.BypassClipboardWriteApproval {
 		t.Error("Expecting BypassClipboardWriteApproval to be true, " +
@@ -80,6 +82,68 @@ func TestNewSocketAccessConfigurationBypassClipboardWriteApprovalEnabled(t *test
 	}
 	if !decoded.BypassClipboardWriteApproval {
 		t.Error("Expecting decoded BypassClipboardWriteApproval to be " +
+			"true, got false instead")
+		return
+	}
+}
+
+func TestNewSocketAccessConfigurationSkipPresetPromptWhenAllSetDefault(t *testing.T) {
+	cfg := newSocketAccessConfiguration(
+		[]configuration.Preset{},
+		"",
+		false,
+		false,
+	)
+	if cfg.SkipPresetPromptWhenAllSet {
+		t.Error("Expecting SkipPresetPromptWhenAllSet to be false, " +
+			"got true instead")
+		return
+	}
+	body := buildAccessConfigRespondBody(cfg)
+	if !strings.Contains(string(body), `"skip_preset_prompt_when_all_set":false`) {
+		t.Errorf("Expecting respond body to contain "+
+			"\"skip_preset_prompt_when_all_set\":false, got %s instead",
+			body)
+		return
+	}
+	var decoded socketAccessConfiguration
+	if err := json.Unmarshal(body, &decoded); err != nil {
+		t.Errorf("Unable to unmarshal respond body: %s", err)
+		return
+	}
+	if decoded.SkipPresetPromptWhenAllSet {
+		t.Error("Expecting decoded SkipPresetPromptWhenAllSet to be " +
+			"false, got true instead")
+		return
+	}
+}
+
+func TestNewSocketAccessConfigurationSkipPresetPromptWhenAllSetEnabled(t *testing.T) {
+	cfg := newSocketAccessConfiguration(
+		[]configuration.Preset{},
+		"",
+		false,
+		true,
+	)
+	if !cfg.SkipPresetPromptWhenAllSet {
+		t.Error("Expecting SkipPresetPromptWhenAllSet to be true, " +
+			"got false instead")
+		return
+	}
+	body := buildAccessConfigRespondBody(cfg)
+	if !strings.Contains(string(body), `"skip_preset_prompt_when_all_set":true`) {
+		t.Errorf("Expecting respond body to contain "+
+			"\"skip_preset_prompt_when_all_set\":true, got %s instead",
+			body)
+		return
+	}
+	var decoded socketAccessConfiguration
+	if err := json.Unmarshal(body, &decoded); err != nil {
+		t.Errorf("Unable to unmarshal respond body: %s", err)
+		return
+	}
+	if !decoded.SkipPresetPromptWhenAllSet {
+		t.Error("Expecting decoded SkipPresetPromptWhenAllSet to be " +
 			"true, got false instead")
 		return
 	}
