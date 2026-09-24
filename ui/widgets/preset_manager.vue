@@ -125,6 +125,22 @@
         <li v-for="(p, pk) in list" :key="pk">
           <div class="lst-wrap">
             <span class="opts">
+              <a
+                v-if="pk > 0"
+                class="opt move"
+                href="javascript:;"
+                title="Move up"
+                @click="move(pk, -1)"
+                >&uarr;</a
+              >
+              <a
+                v-if="pk < list.length - 1"
+                class="opt move"
+                href="javascript:;"
+                title="Move down"
+                @click="move(pk, 1)"
+                >&darr;</a
+              >
               <a class="opt" href="javascript:;" @click="edit(pk)">Edit</a>
               <a class="opt del" href="javascript:;" @click="remove(pk)">
                 Delete
@@ -257,6 +273,17 @@ export default {
     },
     addMeta() {
       this.form.meta.push({ key: "", value: "", revealed: true });
+    },
+    async move(index, by) {
+      if (this.busy) {
+        return;
+      }
+
+      const list = this.list.slice();
+
+      list.splice(index + by, 0, list.splice(index, 1)[0]);
+
+      await this.save(list);
     },
     async remove(index) {
       if (

@@ -86,6 +86,10 @@
   letter-spacing: 1px;
 }
 
+#preset-manager .opt.move {
+  background: #555;
+}
+
 #preset-manager .opt.del {
   background: #a56;
 }

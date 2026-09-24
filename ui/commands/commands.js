@@ -873,14 +873,15 @@ export class Commands {
    *
    */
   mergePresets(ps) {
+    // Presets keep their order, presets of unknown commands are left out
     let pp = [];
-    for (let i = 0; i < this.commands.length; i++) {
-      const fetched = ps.fetch(this.commands[i].name());
-      for (let j = 0; j < fetched.length; j++) {
-        pp.push(
-          new Preset(this.commands[i].represet(fetched[j]), this.commands[i]),
-        );
+    const all = ps.all();
+    for (let i = 0; i < all.length; i++) {
+      const cmd = this.commands.find((c) => c.name() === all[i].type());
+      if (!cmd) {
+        continue;
       }
+      pp.push(new Preset(cmd.represet(all[i]), cmd));
     }
     return pp;
   }

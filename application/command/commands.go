@@ -147,8 +147,9 @@ func (c Commands) Reconfigure(
 ) ([]configuration.Preset, error) {
 	newP := make([]configuration.Preset, 0, len(p))
 
-	for i := range c {
-		for pp := range p {
+	// Presets keep the order they are written in
+	for pp := range p {
+		for i := range c {
 			if c[i].name != p[pp].Type {
 				continue
 			}
