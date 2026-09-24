@@ -24,6 +24,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/nirui/sshwifty/application/log"
 )
 
 const testPresetStoreConfig = `{
@@ -252,5 +254,55 @@ func TestPresetStoreReplaceSymlink(t *testing.T) {
 	}
 	if after := testPresetStoreReadFile(t, cfgFile); string(after["Presets"]) != "[]" {
 		t.Errorf("Expecting the link target to be written, got %s", after["Presets"])
+	}
+}
+
+func TestPresetStoreReplaceFileChanged(t *testing.T) {
+	s, cfgFile := testPresetStore(t)
+	data, _ := os.ReadFile(cfgFile)
+	edited := strings.Replace(string(data), `"Title": "Server"`,
+		`"Title": "Edited by hand"`, 1)
+	if err := os.WriteFile(cfgFile, []byte(edited), 0600); err != nil {
+		t.Fatal(err)
+	}
+	_, revision := s.Raw()
+	err := s.Replace(PresetInputs{}, revision)
+	if !errors.Is(err, ErrPresetFileChanged) {
+		t.Fatalf("Expecting ErrPresetFileChanged, got %v", err)
+	}
+	if after, _ := os.ReadFile(cfgFile); string(after) != edited {
+		t.Error("Expecting the hand edit to be kept")
+	}
+}
+
+func TestPresetStoreReplaceReadOnlyDir(t *testing.T) {
+	s, cfgFile := testPresetStore(t)
+	dir := filepath.Dir(cfgFile)
+	if err := os.Chmod(dir, 0500); err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chmod(dir, 0700)
+	if f, err := os.CreateTemp(dir, "probe"); err == nil {
+		f.Close()
+		os.Remove(f.Name())
+		t.Skip("Directory is still writable (running as root?)")
+	}
+	_, revision := s.Raw()
+	if err := s.Replace(PresetInputs{}, revision); err != nil {
+		t.Fatalf("Expecting no error, got %s", err)
+	}
+	if after := testPresetStoreReadFile(t, cfgFile); string(after["Presets"]) != "[]" {
+		t.Errorf("Expecting the file to be written in place, got %s",
+			after["Presets"])
+	}
+}
+
+func TestDirectLoaderWithoutPresets(t *testing.T) {
+	_, cfg, err := Direct(Configuration{})(log.NewDitch())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Presets == nil || len(cfg.Presets.Presets()) != 0 {
+		t.Errorf("Expecting an empty preset store, got %v", cfg.Presets)
 	}
 }

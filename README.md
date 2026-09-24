@@ -406,7 +406,9 @@ Here is all the options of the configuration file:
 
   // Allow users to add, edit and delete Presets from the "Known remotes" tab.
   // Changes take effect right away and are written back to this config
-  // file, which reformats it and sorts its keys. Defaults to false.
+  // file, which reformats it and sorts its keys. If you edit Presets in
+  // this file by hand, restart Sshwifty or send it SIGHUP before saving
+  // from the UI again, otherwise the save is refused. Defaults to false.
   //
   // Anyone who can use Sshwifty can edit the Presets, so set SharedKey, or
   // only enable this behind an authenticating reverse proxy. Presets saved

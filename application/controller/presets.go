@@ -96,7 +96,8 @@ func (p presets) Put(w *ResponseWriter, r *http.Request, l log.Logger) error {
 	switch {
 	case errors.Is(err, configuration.ErrPresetRevisionConflict):
 		return ErrPresetsRevisionConflict
-	case errors.Is(err, configuration.ErrPresetInvalid):
+	case errors.Is(err, configuration.ErrPresetInvalid),
+		errors.Is(err, configuration.ErrPresetFileChanged):
 		return p.badRequest(w, err)
 	case err != nil:
 		return err

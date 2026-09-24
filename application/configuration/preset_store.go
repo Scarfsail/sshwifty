@@ -24,6 +24,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -36,6 +37,11 @@ var (
 		"presets have been changed since they were loaded")
 
 	ErrPresetInvalid = errors.New("invalid preset")
+
+	ErrPresetFileChanged = errors.New(
+		"the Presets in the configuration file have been changed since " +
+			"they were loaded. Restart Sshwifty or send it SIGHUP to load " +
+			"them, then save again")
 )
 
 // PresetsReconfigurer lets the commands alter and filter the presets
@@ -229,10 +235,21 @@ func (s *PresetStore) write(raw PresetInputs) error {
 		return err
 	}
 	// Keys are matched case-insensitively when the file is loaded
+	onDisk := PresetInputs(nil)
 	for k := range cfg {
-		if strings.EqualFold(k, "Presets") {
-			delete(cfg, k)
+		if !strings.EqualFold(k, "Presets") {
+			continue
 		}
+		if err := json.Unmarshal(cfg[k], &onDisk); err != nil {
+			return err
+		}
+		delete(cfg, k)
+	}
+	// Refuse to overwrite Presets that were edited by hand after loading
+	if revision, err := presetRevision(onDisk); err != nil {
+		return err
+	} else if revision != s.revision {
+		return ErrPresetFileChanged
 	}
 	if cfg["Presets"], err = json.Marshal(raw); err != nil {
 		return err
@@ -249,21 +266,21 @@ func (s *PresetStore) write(raw PresetInputs) error {
 	if err != nil {
 		return err
 	}
-	if s.writeAtomic(target, buf.Bytes(), info.Mode().Perm()) == nil {
-		return nil
-	}
-	// The directory may not be writable, or the file may be a bind mount
-	// that cannot be renamed over (Docker). Write it in place instead
-	return os.WriteFile(target, buf.Bytes(), info.Mode().Perm())
+	return s.replace(target, buf.Bytes(), info.Mode().Perm())
 }
 
-// writeAtomic writes data to a temporary file next to target, then renames it
-// over target
-func (s *PresetStore) writeAtomic(
+// replace writes data to a temporary file next to target, then renames it
+// over target. When that is not possible it writes target in place, but only
+// after the complete data could be written somewhere, so a full disk never
+// leaves target truncated
+func (s *PresetStore) replace(
 	target string, data []byte, perm os.FileMode) error {
 	tmp, err := os.CreateTemp(
 		filepath.Dir(target), "."+filepath.Base(target)+".*")
-	if err != nil {
+	if errors.Is(err, fs.ErrPermission) {
+		// The directory is not writable, the file itself may still be
+		return os.WriteFile(target, data, perm)
+	} else if err != nil {
 		return err
 	}
 	defer os.Remove(tmp.Name())
@@ -277,5 +294,11 @@ func (s *PresetStore) writeAtomic(
 	if err != nil {
 		return err
 	}
-	return os.Rename(tmp.Name(), target)
+	if os.Rename(tmp.Name(), target) == nil {
+		return nil
+	}
+	// The file may be a bind mount that cannot be renamed over (Docker).
+	// Free the temporary copy first, then write in place
+	os.Remove(tmp.Name())
+	return os.WriteFile(target, data, perm)
 }
