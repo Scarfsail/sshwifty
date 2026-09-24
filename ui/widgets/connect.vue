@@ -47,6 +47,9 @@
         v-if="tab === 'known' && !inputting"
         :presets="presets"
         :restricted-to-presets="restrictedToPresets"
+        :preset-editing="presetEditing"
+        :presets-api="presetsApi"
+        :connectors="connectors"
         :knowns="knowns"
         :launcher-builder="knownsLauncherBuilder"
         :knowns-export="knownsExport"
@@ -111,6 +114,14 @@ export default {
     restrictedToPresets: {
       type: Boolean,
       default: () => false,
+    },
+    presetEditing: {
+      type: Boolean,
+      default: () => false,
+    },
+    presetsApi: {
+      type: Object,
+      default: () => null,
     },
     knowns: {
       type: Array,

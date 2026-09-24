@@ -35,9 +35,9 @@ import (
 type socketVerification struct {
 	socket
 
-	heartbeat     string
-	timeout       string
-	configRspBody []byte
+	heartbeat string
+	timeout   string
+	protocols []string
 }
 
 type socketRemotePreset struct {
@@ -54,6 +54,7 @@ type socketAccessConfiguration struct {
 	BypassClipboardWriteApproval bool                 `json:"bypass_clipboard_write_approval"`
 	SkipPresetPromptWhenAllSet   bool                 `json:"skip_preset_prompt_when_all_set"`
 	EnabledProtocols             []string             `json:"enabled_protocols"`
+	PresetEditing                bool                 `json:"preset_editing"`
 }
 
 func newSocketAccessConfiguration(
@@ -62,6 +63,7 @@ func newSocketAccessConfiguration(
 	bypassClipboardWriteApproval bool,
 	skipPresetPromptWhenAllSet bool,
 	enabledProtocols []string,
+	presetEditing bool,
 ) socketAccessConfiguration {
 	presets := make([]socketRemotePreset, len(remotes))
 	for i := range presets {
@@ -79,6 +81,7 @@ func newSocketAccessConfiguration(
 		BypassClipboardWriteApproval: bypassClipboardWriteApproval,
 		SkipPresetPromptWhenAllSet:   skipPresetPromptWhenAllSet,
 		EnabledProtocols:             enabledProtocols,
+		PresetEditing:                presetEditing,
 	}
 }
 
@@ -102,15 +105,7 @@ func newSocketVerification(
 			srvCfg.HeartbeatTimeout.Seconds(), 'g', 2, 64),
 		timeout: strconv.FormatFloat(
 			srvCfg.ReadTimeout.Seconds(), 'g', 2, 64),
-		configRspBody: buildAccessConfigRespondBody(
-			newSocketAccessConfiguration(
-				commCfg.Presets,
-				srvCfg.ServerMessage,
-				commCfg.BypassClipboardWriteApproval,
-				commCfg.SkipPresetPromptWhenAllSet,
-				cmds.Names(),
-			),
-		),
+		protocols: cmds.Names(),
 	}
 }
 
@@ -136,7 +131,15 @@ func (s socketVerification) setServerConfigRespond(
 		hd.Add("X-OnlyAllowPresetRemotes", "yes")
 	}
 	hd.Add("Content-Type", "text/json; charset=utf-8")
-	w.Write(s.configRspBody)
+	// Built on every request, as the presets can be edited at runtime
+	w.Write(buildAccessConfigRespondBody(newSocketAccessConfiguration(
+		s.commonCfg.Presets.Presets(),
+		s.serverCfg.ServerMessage,
+		s.commonCfg.BypassClipboardWriteApproval,
+		s.commonCfg.SkipPresetPromptWhenAllSet,
+		s.protocols,
+		s.commonCfg.AllowPresetEditing,
+	)))
 }
 
 func (s socketVerification) Get(
@@ -144,8 +147,7 @@ func (s socketVerification) Get(
 	hd := w.Header()
 	hd.Add("Cache-Control", "no-store")
 	hd.Add("Pragma", "no-store")
-	key := r.Header.Get("X-Key")
-	if len(key) <= 0 {
+	if len(r.Header.Get("X-Key")) <= 0 {
 		hd.Add("X-Key", base64.StdEncoding.EncodeToString(s.mixerKey(r)))
 		if len(s.commonCfg.SharedKey) <= 0 {
 			s.setServerConfigRespond(&hd, w)
@@ -153,7 +155,18 @@ func (s socketVerification) Get(
 		}
 		return ErrSocketInvalidAuthKey
 	}
-	if len(key) > 64 {
+	if err := s.verifyKey(r); err != nil {
+		return err
+	}
+	hd.Add("X-Key", base64.StdEncoding.EncodeToString(s.mixerKey(r)))
+	s.setServerConfigRespond(&hd, w)
+	return nil
+}
+
+// verifyKey checks the X-Key header of r against the shared key
+func (s socketVerification) verifyKey(r *http.Request) error {
+	key := r.Header.Get("X-Key")
+	if len(key) <= 0 || len(key) > 64 {
 		return ErrSocketInvalidAuthKey
 	}
 	// Delay the brute force attack. Use it with connection limits (via
@@ -163,11 +176,8 @@ func (s socketVerification) Get(
 	if decodedKeyErr != nil {
 		return NewError(http.StatusBadRequest, decodedKeyErr.Error())
 	}
-	authKey := s.authKey(r)
-	if !hmac.Equal(authKey, decodedKey) {
+	if !hmac.Equal(s.authKey(r), decodedKey) {
 		return ErrSocketAuthFailed
 	}
-	hd.Add("X-Key", base64.StdEncoding.EncodeToString(s.mixerKey(r)))
-	s.setServerConfigRespond(&hd, w)
 	return nil
 }

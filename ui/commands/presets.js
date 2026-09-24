@@ -257,25 +257,13 @@ export class Presets {
   }
 
   /**
-   * Return all presets of a type
-   *
-   * @param {string} type type of the presets data
+   * Return all presets, in their original order
    *
    * @returns {Array<Preset>}
    *
    */
-  fetch(type) {
-    let presets = [];
-
-    for (let i = 0; i < this.presets.length; i++) {
-      if (this.presets[i].type() !== type) {
-        continue;
-      }
-
-      presets.push(this.presets[i]);
-    }
-
-    return presets;
+  all() {
+    return this.presets;
   }
 
   /**

@@ -69,6 +69,22 @@ describe("Commands", () => {
     assert.deepStrictEqual(uids(g.others), ["e", "d"]);
   });
 
+  it("mergePresets keeps the order of the presets", () => {
+    const ps = cmds.mergePresets(
+      new presets.Presets([
+        preset("Telnet", "router", "192.168.0.1", {}),
+        preset("SSH", "nas", "192.168.0.41", {}),
+        preset("Bogus", "bogus", "192.168.0.2", {}),
+        preset("Telnet", "switch", "192.168.0.2", {}),
+      ]),
+    );
+
+    assert.deepStrictEqual(
+      ps.map((p) => p.preset.title()),
+      ["router", "nas", "switch"],
+    );
+  });
+
   it("groupKnowns lets a host-only preset absorb every user", () => {
     const ps = cmds.mergePresets(
       new presets.Presets([preset("SSH", "nas", "192.168.0.41", {})]),

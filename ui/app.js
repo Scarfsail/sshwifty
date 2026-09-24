@@ -52,6 +52,8 @@ const mainTemplate = `
   :server-message="serverMessage"
   :preset-data="presetData.presets"
   :restricted-to-presets="presetData.restricted"
+  :preset-editing="presetData.editing"
+  :presets-api="presetsApi"
   :bypass-clipboard-write-approval="bypassClipboardWriteApproval"
   :skip-preset-prompt-when-all-set="skipPresetPromptWhenAllSet"
   :view-port="viewPort"
@@ -71,6 +73,7 @@ const mainTemplate = `
 const socksInterface = "/sshwifty/socket";
 const socksVerificationInterface = socksInterface + "/verify";
 const socksKeyTimeTruncater = 100 * 1000;
+const presetsInterface = "/sshwifty/presets";
 
 function allCommands() {
   return [new telnet.Command(), new ssh.Command()];
@@ -121,6 +124,11 @@ function startApp(rootEl) {
         presetData: {
           presets: new Presets([]),
           restricted: false,
+          editing: false,
+        },
+        presetsApi: {
+          load: this.loadPresets,
+          save: this.savePresets,
         },
         bypassClipboardWriteApproval: false,
         skipPresetPromptWhenAllSet: false,
@@ -161,6 +169,11 @@ function startApp(rootEl) {
           ? document.body.classList.add("app-error")
           : document.body.classList.remove("app-error");
       },
+    },
+    created() {
+      // The passphrase of the current session, kept out of the reactive
+      // data. Preset editing sends it along with every request
+      this.passphrase = "";
     },
     mounted() {
       const self = this;
@@ -249,6 +262,7 @@ function startApp(rootEl) {
         this.presetData = {
           presets: new Presets(authData.presets ? authData.presets : []),
           restricted: authResult.onlyAllowPresetRemotes,
+          editing: authData.preset_editing === true,
         };
         this.bypassClipboardWriteApproval =
           authData.bypass_clipboard_write_approval === true;
@@ -276,17 +290,18 @@ function startApp(rootEl) {
 
         return result;
       },
-      async requestAuth(privateKey) {
-        let authKey =
-          !privateKey || !this.key
-            ? null
-            : await this.getSocketAuthKey(privateKey);
+      async authHeaders(privateKey) {
+        const authKey = await this.getSocketAuthKey(privateKey);
 
-        let h = await xhr.get(socksVerificationInterface, {
-          "X-Key": authKey
-            ? btoa(String.fromCharCode.apply(null, authKey))
-            : "",
-        });
+        return { "X-Key": btoa(String.fromCharCode.apply(null, authKey)) };
+      },
+      async requestAuth(privateKey) {
+        let h = await xhr.get(
+          socksVerificationInterface,
+          !privateKey || !this.key
+            ? { "X-Key": "" }
+            : await this.authHeaders(privateKey),
+        );
 
         let serverDate = h.getResponseHeader("Date");
 
@@ -381,6 +396,7 @@ function startApp(rootEl) {
           let self = this;
           switch (result.result) {
             case 200:
+              this.passphrase = passphrase;
               this.executeHomeApp(result, {
                 async fetch() {
                   let result = await self.doAuth(passphrase);
@@ -411,6 +427,85 @@ function startApp(rootEl) {
         } catch (e) {
           this.authErr = "Unable to authenticate: " + e;
         }
+      },
+      async loadPresets() {
+        const h = await xhr.get(
+          presetsInterface,
+          await this.authHeaders(this.passphrase),
+        );
+
+        if (h.status !== 200) {
+          throw new Error("Unable to load presets, error code: " + h.status);
+        }
+
+        return JSON.parse(h.responseText);
+      },
+      // savePresets replaces all presets. It resolves to the new presets and
+      // revision on success, along with why the preset list could not be
+      // refreshed if it could not, and to the reason (conflict or error)
+      // otherwise
+      async savePresets(revision, presets) {
+        const headers = await this.authHeaders(this.passphrase);
+
+        headers["Content-Type"] = "application/json";
+
+        const h = await xhr.put(
+          presetsInterface,
+          headers,
+          JSON.stringify({ revision: revision, presets: presets }),
+        );
+
+        switch (h.status) {
+          case 200:
+            break;
+
+          case 409:
+            return { conflict: true };
+
+          case 400:
+            return { error: h.responseText };
+
+          case 413:
+            return { error: "The presets are too large to be saved" };
+
+          default:
+            return { error: "Unexpected backend status: " + h.status };
+        }
+
+        // Reload through the verify interface, the one place presets are
+        // parsed from. The save is done already, so a failed reload is
+        // retried once, then reported without failing the save
+        let refreshError = "";
+
+        for (let i = 0; i < 2; i++) {
+          try {
+            await this.refreshPresets();
+
+            refreshError = "";
+
+            break;
+          } catch (e) {
+            refreshError = "" + e;
+          }
+        }
+
+        return {
+          data: JSON.parse(h.responseText),
+          refreshError: refreshError,
+        };
+      },
+      async refreshPresets() {
+        const result = await this.doAuth(this.passphrase);
+
+        if (result.result !== 200) {
+          throw new Error("Unexpected backend status: " + result.result);
+        }
+
+        const authData = JSON.parse(result.data);
+
+        this.presetData.presets = new Presets(
+          authData.presets ? authData.presets : [],
+        );
       },
       updateTabTitleInfo(tabs, updated) {
         if (tabs.length <= 0) {

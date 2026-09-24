@@ -106,3 +106,20 @@ func TestCommandsNames(t *testing.T) {
 		return
 	}
 }
+
+func TestCommandsReconfigureKeepsOrder(t *testing.T) {
+	presets, err := testCommands().Reconfigure([]configuration.Preset{
+		{Title: "s1", Type: "SSH"},
+		{Title: "t", Type: "Telnet"},
+		{Title: "s2", Type: "SSH"},
+	})
+	if err != nil {
+		t.Errorf("Expecting no error, got %s", err)
+		return
+	}
+	if len(presets) != 3 || presets[0].Title != "s1" ||
+		presets[1].Title != "t" || presets[2].Title != "s2" {
+		t.Errorf("Expecting presets in their written order, got %v", presets)
+		return
+	}
+}

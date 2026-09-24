@@ -29,6 +29,13 @@ const (
 // Good for integration.
 func Direct(cfg Configuration) Loader {
 	return func(log log.Logger) (string, Configuration, error) {
+		if cfg.Presets == nil {
+			presets, err := newPresetStore(nil, "")
+			if err != nil {
+				return directTypeName, Configuration{}, err
+			}
+			cfg.Presets = presets
+		}
 		return directTypeName, cfg, nil
 	}
 }

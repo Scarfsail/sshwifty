@@ -99,6 +99,8 @@
       :connectors="connector.connectors"
       :presets="presets"
       :restricted-to-presets="restrictedToPresets"
+      :preset-editing="presetEditing"
+      :presets-api="presetsApi"
       :knowns="enabledKnowns"
       :knowns-launcher-builder="buildknownLauncher"
       :knowns-export="exportKnowns"
@@ -207,6 +209,14 @@ export default {
       type: Boolean,
       default: () => false,
     },
+    presetEditing: {
+      type: Boolean,
+      default: () => false,
+    },
+    presetsApi: {
+      type: Object,
+      default: () => null,
+    },
     bypassClipboardWriteApproval: {
       type: Boolean,
       default: () => false,
@@ -261,6 +271,12 @@ export default {
       return this.connector.knowns.filter(
         (k) => this.getConnectorByType(k.type) !== null,
       );
+    },
+  },
+  watch: {
+    // Presets are replaced after they have been edited
+    presetData(newVal) {
+      this.presets = this.commands.mergePresets(newVal);
     },
   },
   mounted() {

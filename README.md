@@ -404,6 +404,27 @@ Here is all the options of the configuration file:
   //         environment variables
   "OnlyAllowPresetRemotes": false,
 
+  // Allow users to add, edit and delete Presets from the "Known remotes" tab.
+  // Changes take effect right away and are written back to this config
+  // file, which reformats it and sorts its keys. If you edit Presets in
+  // this file by hand, restart Sshwifty or send it SIGHUP before saving
+  // from the UI again, otherwise the save is refused. Defaults to false.
+  //
+  // Anyone who can use Sshwifty can edit the Presets, so set SharedKey, or
+  // only enable this behind an authenticating reverse proxy. Presets saved
+  // from the UI are sent to every user, secrets in Meta included. Anyone who
+  // can edit the Presets can add one, so with OnlyAllowPresetRemotes they
+  // can also allow themselves a new remote.
+  //
+  // Meta values that start with "file://" or "environment://" can be kept
+  // and moved between presets from the UI, but new ones can only be
+  // written in this file.
+  //
+  // NOTICE: You can only configure AllowPresetEditing through a config
+  //         file. This option is not supported when you are configuring
+  //         with environment variables
+  "AllowPresetEditing": false,
+
   // Protocols to enable, for example ["SSH"] to offer SSH only. Names are
   // matched case-insensitively, and an unknown name stops Sshwifty from
   // starting. Presets and known remotes of a protocol that is not enabled

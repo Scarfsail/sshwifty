@@ -108,10 +108,10 @@ func Environ() Loader {
 		}
 
 		// Preset
-		var presets presetInputs
+		var presets PresetInputs
 		presetStr := strings.TrimSpace(GetEnv("SSHWIFTY_PRESETS"))
 		if len(presetStr) > 0 {
-			presets = make(presetInputs, 0, 16)
+			presets = make(PresetInputs, 0, 16)
 			if e := json.Unmarshal([]byte(presetStr), &presets); e != nil {
 				return environTypeName, Configuration{}, fmt.Errorf(
 					"invalid \"SSHWIFTY_PRESETS\": %s", e)
@@ -139,7 +139,7 @@ func Environ() Loader {
 			EnabledProtocols: strings.Split(
 				GetEnv("SSHWIFTY_ENABLEDPROTOCOLS"), ",",
 			),
-		}.concretize()
+		}.concretize("")
 		return environTypeName, cfg, err
 	}
 }

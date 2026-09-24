@@ -32,6 +32,7 @@ func TestNewSocketAccessConfigurationBypassClipboardWriteApprovalDefault(t *test
 		false,
 		false,
 		nil,
+		false,
 	)
 	if cfg.BypassClipboardWriteApproval {
 		t.Error("Expecting BypassClipboardWriteApproval to be false, " +
@@ -64,6 +65,7 @@ func TestNewSocketAccessConfigurationBypassClipboardWriteApprovalEnabled(t *test
 		true,
 		false,
 		nil,
+		false,
 	)
 	if !cfg.BypassClipboardWriteApproval {
 		t.Error("Expecting BypassClipboardWriteApproval to be true, " +
@@ -96,6 +98,7 @@ func TestNewSocketAccessConfigurationSkipPresetPromptWhenAllSetDefault(t *testin
 		false,
 		false,
 		nil,
+		false,
 	)
 	if cfg.SkipPresetPromptWhenAllSet {
 		t.Error("Expecting SkipPresetPromptWhenAllSet to be false, " +
@@ -128,6 +131,7 @@ func TestNewSocketAccessConfigurationSkipPresetPromptWhenAllSetEnabled(t *testin
 		false,
 		true,
 		nil,
+		false,
 	)
 	if !cfg.SkipPresetPromptWhenAllSet {
 		t.Error("Expecting SkipPresetPromptWhenAllSet to be true, " +
@@ -160,6 +164,7 @@ func TestNewSocketAccessConfigurationEnabledProtocols(t *testing.T) {
 		false,
 		false,
 		[]string{"SSH"},
+		false,
 	)
 	body := buildAccessConfigRespondBody(cfg)
 	if !strings.Contains(string(body), `"enabled_protocols":["SSH"]`) {

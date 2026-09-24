@@ -29,9 +29,10 @@ type Common struct {
 	SharedKey                    string
 	Dialer                       network.Dial
 	DialTimeout                  time.Duration
-	Presets                      []Preset
+	Presets                      *PresetStore
 	Hooks                        HookSettings
 	OnlyAllowPresetRemotes       bool
+	AllowPresetEditing           bool
 	BypassClipboardWriteApproval bool
 	SkipPresetPromptWhenAllSet   bool
 }

@@ -228,4 +228,50 @@ describe("SSH", () => {
       false,
     );
   });
+
+  it("presetFromKnown builds a preset that matches the record", () => {
+    const k = {
+      type: "SSH",
+      title: "root@192.168.0.41:2222",
+      data: {
+        host: "192.168.0.41:2222",
+        user: "root",
+        authentication: "Password",
+        charset: "utf-8",
+        fingerprint: "SHA256:fp",
+      },
+    };
+    const p = cmd.presetFromKnown(k);
+    assert.deepStrictEqual(p, {
+      Title: "root@192.168.0.41:2222",
+      Type: "SSH",
+      Host: "192.168.0.41:2222",
+      TabColor: "",
+      Meta: {
+        User: "root",
+        Authentication: "Password",
+        Encoding: "utf-8",
+        Fingerprint: "SHA256:fp",
+      },
+    });
+    const loaded = cmd.represet(
+      new presets.Preset({
+        title: p.Title,
+        type: p.Type,
+        host: p.Host,
+        tab_color: p.TabColor,
+        meta: p.Meta,
+      }),
+    );
+    assert.strictEqual(cmd.matchesKnown(loaded, k), true);
+  });
+
+  it("presetFromKnown leaves out empty fields", () => {
+    const p = cmd.presetFromKnown({
+      type: "SSH",
+      title: "root@192.168.0.41",
+      data: { host: "192.168.0.41", user: "root" },
+    });
+    assert.deepStrictEqual(p.Meta, { User: "root" });
+  });
 });

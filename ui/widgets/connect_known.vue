@@ -19,7 +19,14 @@
 
 <template>
   <div id="connect-known-list" :class="{ reloaded: reloaded }">
-    <div v-if="sections.length <= 0" id="connect-known-list-empty">
+    <preset-manager
+      v-if="manager"
+      :api="presetsApi"
+      :types="connectors.map((c) => c.name())"
+      :draft="manager.draft"
+      @close="manager = null"
+    ></preset-manager>
+    <div v-else-if="sections.length <= 0" id="connect-known-list-empty">
       No known remote available
     </div>
     <div v-else>
@@ -29,7 +36,17 @@
         class="known-section"
         :class="{ 'last-planel': sk > 0 }"
       >
-        <h3>{{ section.title }}</h3>
+        <h3>
+          {{ section.title }}
+          <a
+            v-if="section.presets && presetEditing"
+            class="manage"
+            href="javascript:;"
+            @click="manager = { draft: null }"
+          >
+            Manage
+          </a>
+        </h3>
 
         <ul class="hlst lstcl1">
           <li
@@ -78,6 +95,15 @@
                 >
                   Remove
                 </a>
+
+                <a
+                  v-if="!card.preset && presetEditing"
+                  class="opt save"
+                  href="javascript:;"
+                  @click="saveAsPreset(card.known)"
+                >
+                  Save as preset
+                </a>
               </template>
             </div>
 
@@ -107,7 +133,7 @@
       </div>
     </div>
 
-    <div id="connect-known-list-import">
+    <div v-if="!manager" id="connect-known-list-import">
       Tip: You can
       <a href="javascript:;" @click="importHosts">import</a> and
       <a href="javascript:;" @click="exportHosts">export</a>
@@ -120,8 +146,12 @@
 import "./connect_known.css";
 
 import { groupKnowns } from "../commands/commands.js";
+import PresetManager from "./preset_manager.vue";
 
 export default {
+  components: {
+    "preset-manager": PresetManager,
+  },
   props: {
     presets: {
       type: Array,
@@ -130,6 +160,18 @@ export default {
     restrictedToPresets: {
       type: Boolean,
       default: () => false,
+    },
+    presetEditing: {
+      type: Boolean,
+      default: () => false,
+    },
+    presetsApi: {
+      type: Object,
+      default: () => null,
+    },
+    connectors: {
+      type: Array,
+      default: () => [],
     },
     knowns: {
       type: Array,
@@ -153,6 +195,7 @@ export default {
       copying: {},
       reloaded: false,
       busy: false,
+      manager: null,
     };
   },
   computed: {
@@ -185,7 +228,8 @@ export default {
             knowns: [k],
           })),
         },
-      ].filter((s) => s.cards.length > 0);
+        // Keep the Presets section while editing, it holds the Manage link
+      ].filter((s) => s.cards.length > 0 || (s.presets && this.presetEditing));
     },
   },
   watch: {
@@ -259,6 +303,15 @@ export default {
       }, 2000);
 
       this.busy = false;
+    },
+    saveAsPreset(known) {
+      if (this.busy) {
+        return;
+      }
+
+      const command = this.connectors.find((c) => c.name() === known.type);
+
+      this.manager = { draft: command.presetFromKnown(known) };
     },
     remove(uid) {
       if (this.busy) {
