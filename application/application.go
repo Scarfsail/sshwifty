@@ -92,7 +92,7 @@ func (a Application) run(
 	}
 
 	// Allowing command to alter presets
-	newPresets, err := commands.Reconfigure(c.Presets)
+	ignored, err := c.Presets.Reconfigure(commands.Reconfigure)
 
 	if err != nil {
 		a.logger.Error("Unable to reconfigure presets: %s", err)
@@ -100,12 +100,10 @@ func (a Application) run(
 		return false, err
 	}
 
-	if ignored := len(c.Presets) - len(newPresets); ignored > 0 {
+	if ignored > 0 {
 		a.logger.Warning("%d preset(s) were ignored because their Type is "+
 			"unknown or not enabled", ignored)
 	}
-
-	c.Presets = newPresets
 
 	// Verify all configuration
 	err = c.Verify()
@@ -114,6 +112,11 @@ func (a Application) run(
 		a.logger.Error("Configuration was invalid: %s", err)
 
 		return false, err
+	}
+
+	if c.AllowPresetEditing && !c.PresetEditingEnabled() {
+		a.logger.Warning("AllowPresetEditing is ignored because the " +
+			"configuration was not loaded from a file")
 	}
 
 	closeNotify := closeSigBuilder()

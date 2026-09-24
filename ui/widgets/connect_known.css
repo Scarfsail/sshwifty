@@ -36,6 +36,12 @@
   font-weight: bold;
 }
 
+#connect-known-list h3 > .manage {
+  float: right;
+  color: #e9a;
+  text-decoration: none;
+}
+
 #connect-known-list.reloaded {
 }
 
@@ -152,6 +158,11 @@
 
 #connect-known-list .known-card > .labels > .opt.del {
   background: #a56;
+  color: #fff;
+}
+
+#connect-known-list .known-card > .labels > .opt.save {
+  background: #57a;
   color: #fff;
 }
 

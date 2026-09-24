@@ -647,4 +647,14 @@ export class Command {
       )
     );
   }
+
+  presetFromKnown(known) {
+    return {
+      Title: known.title,
+      Type: this.name(),
+      Host: known.data.host,
+      TabColor: "",
+      Meta: known.data.charset ? { Encoding: known.data.charset } : {},
+    };
+  }
 }

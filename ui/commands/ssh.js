@@ -1354,4 +1354,26 @@ export class Command {
     const user = preset.metaDefault("User", "");
     return user.length <= 0 || user === known.data.user;
   }
+
+  presetFromKnown(known) {
+    const meta = {},
+      fields = {
+        User: known.data.user,
+        Authentication: known.data.authentication,
+        Encoding: known.data.charset,
+        Fingerprint: known.data.fingerprint,
+      };
+    for (let k in fields) {
+      if (fields[k]) {
+        meta[k] = fields[k];
+      }
+    }
+    return {
+      Title: known.title,
+      Type: this.name(),
+      Host: known.data.host,
+      TabColor: "",
+      Meta: meta,
+    };
+  }
 }

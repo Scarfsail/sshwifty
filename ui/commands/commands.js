@@ -602,6 +602,9 @@ class Builder {
     this.matcher = (p, k) => {
       return command.matchesKnown(p, k);
     };
+    this.knownPresetter = (k) => {
+      return command.presetFromKnown(k);
+    };
     this.wizarder = (n, i, r, u, y, x, l, p, k) => {
       return command.wizard(n, i, r, u, y, x, l, p, k);
     };
@@ -796,6 +799,18 @@ class Builder {
    */
   matchesKnown(preset, known) {
     return this.matcher(preset, known);
+  }
+
+  /**
+   * Build a preset from a history record, in the form of a configuration
+   * file entry
+   *
+   * @param {object} known History record, as returned by History.all()
+   *
+   * @return {object} Preset with Title, Type, Host, TabColor and Meta
+   */
+  presetFromKnown(known) {
+    return this.knownPresetter(known);
   }
 }
 

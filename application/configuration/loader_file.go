@@ -33,7 +33,11 @@ const (
 )
 
 func loadFile(filePath string) (string, Configuration, error) {
-	f, fErr := os.Open(filePath)
+	absPath, absErr := filepath.Abs(filePath)
+	if absErr != nil {
+		return fileTypeName, Configuration{}, absErr
+	}
+	f, fErr := os.Open(absPath)
 	if fErr != nil {
 		return fileTypeName, Configuration{}, fErr
 	}
@@ -44,7 +48,7 @@ func loadFile(filePath string) (string, Configuration, error) {
 	if jDecodeErr != nil {
 		return fileTypeName, Configuration{}, jDecodeErr
 	}
-	finalCfg, err := cfg.concretize()
+	finalCfg, err := cfg.concretize(absPath)
 	return fileTypeName, finalCfg, err
 }
 

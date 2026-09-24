@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-function send(method, url, headers) {
+function send(method, url, headers, body) {
   return new Promise((res, rej) => {
     let authReq = new XMLHttpRequest();
 
@@ -41,12 +41,16 @@ function send(method, url, headers) {
       authReq.setRequestHeader(h, headers[h]);
     }
 
-    authReq.send();
+    authReq.send(body);
   });
 }
 
 export function get(url, headers) {
   return send("GET", url, headers);
+}
+
+export function put(url, headers, body) {
+  return send("PUT", url, headers, body);
 }
 
 export function options(url, headers) {

@@ -81,8 +81,9 @@ func (f serverInputs) concretize() ([]Server, error) {
 	return ss, nil
 }
 
-// presetInput contains user input for a preset
-type presetInput struct {
+// PresetInput contains user input for a preset. Meta values are kept as
+// written, scheme prefixes included
+type PresetInput struct {
 	Title    string
 	Type     string
 	Host     string
@@ -90,8 +91,8 @@ type presetInput struct {
 	Meta     Meta
 }
 
-// concretize creates a preset based on current presetInput
-func (f presetInput) concretize() (Preset, error) {
+// concretize creates a preset based on current PresetInput
+func (f PresetInput) concretize() (Preset, error) {
 	m, err := f.Meta.Concretize()
 	if err != nil {
 		return Preset{}, err
@@ -105,12 +106,12 @@ func (f presetInput) concretize() (Preset, error) {
 	}, nil
 }
 
-// presetInputs contains a group of presetInput
-type presetInputs []presetInput
+// PresetInputs contains a group of PresetInput
+type PresetInputs []PresetInput
 
 // concretize creates configuration for all Presets based on current
-// presetInputs
-func (f presetInputs) concretize() ([]Preset, error) {
+// PresetInputs
+func (f PresetInputs) concretize() ([]Preset, error) {
 	ps := make([]Preset, 0, len(f))
 	for i, p := range f {
 		pp, err := p.concretize()
@@ -154,10 +155,14 @@ type commonInput struct {
 	Servers serverInputs
 
 	// Remotes
-	Presets presetInputs
+	Presets PresetInputs
 
 	// Allow predefined remotes only
 	OnlyAllowPresetRemotes bool
+
+	// Allow authenticated users to edit Presets from the web UI. Changes are
+	// written back to the configuration file
+	AllowPresetEditing bool
 
 	// Allow trusted remotes to write to the system clipboard without
 	// requiring the user approval prompt
@@ -171,8 +176,10 @@ type commonInput struct {
 	EnabledProtocols []string
 }
 
-// concretize creates Configuration based on current commonInput
-func (f commonInput) concretize() (Configuration, error) {
+// concretize creates Configuration based on current commonInput. sourceFile
+// is the configuration file the input was loaded from, empty when there is
+// none
+func (f commonInput) concretize(sourceFile string) (Configuration, error) {
 	if err := f.Hooks.verify(); err != nil {
 		return Configuration{}, err
 	}
@@ -180,7 +187,7 @@ func (f commonInput) concretize() (Configuration, error) {
 	if err != nil {
 		return Configuration{}, err
 	}
-	presets, err := f.Presets.concretize()
+	presets, err := newPresetStore(f.Presets, sourceFile)
 	if err != nil {
 		return Configuration{}, err
 	}
@@ -208,8 +215,10 @@ func (f commonInput) concretize() (Configuration, error) {
 		Servers:                      servers,
 		Presets:                      presets,
 		OnlyAllowPresetRemotes:       f.OnlyAllowPresetRemotes,
+		AllowPresetEditing:           f.AllowPresetEditing,
 		BypassClipboardWriteApproval: f.BypassClipboardWriteApproval,
 		SkipPresetPromptWhenAllSet:   f.SkipPresetPromptWhenAllSet,
 		EnabledProtocols:             protocols,
+		SourceFile:                   sourceFile,
 	}, nil
 }

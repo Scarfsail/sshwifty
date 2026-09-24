@@ -1,0 +1,110 @@
+/*
+// Sshwifty - A Web SSH client
+//
+// Copyright (C) 2019-2026 Ni Rui <ranqus@gmail.com>
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as
+// published by the Free Software Foundation, either version 3 of the
+// License, or (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
+
+@charset "utf-8";
+
+#preset-manager {
+  padding: 15px 20px 20px 20px;
+}
+
+#preset-manager a {
+  color: #e9a;
+  text-decoration: none;
+}
+
+#preset-manager-back.disabled {
+  color: #444;
+}
+
+#preset-manager-back::before {
+  content: "\000AB";
+  margin-right: 3px;
+}
+
+#preset-manager-error {
+  font-size: 1.15em;
+  color: #fff;
+  background: #c73;
+  padding: 10px;
+  margin-bottom: 15px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+#preset-manager-loading {
+  text-align: center;
+  color: #999;
+  font-size: 1.2em;
+  padding: 20px;
+}
+
+#preset-manager .lst1 > li .lst-wrap {
+  color: #aaa;
+  padding: 10px;
+}
+
+#preset-manager .lst1 > li .lst-wrap:hover {
+  background: #444;
+}
+
+#preset-manager .lst1 h4 {
+  color: #fff;
+  font-size: 1.5em;
+  margin: 0 0 5px 0;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+#preset-manager .opts {
+  float: right;
+}
+
+#preset-manager .opt {
+  display: inline-block;
+  padding: 3px;
+  margin-left: 3px;
+  background: #287;
+  color: #fff;
+  text-transform: uppercase;
+  font-size: 0.85em;
+  letter-spacing: 1px;
+}
+
+#preset-manager .opt.del {
+  background: #a56;
+}
+
+#preset-manager-add {
+  display: inline-block;
+  margin-top: 15px;
+  font-size: 1.1em;
+}
+
+#preset-manager .form1 {
+  font-size: 1.2em;
+}
+
+#preset-manager .form1 .field.meta > input {
+  width: auto;
+  margin-right: 5px;
+}
+
+#preset-manager .form1 .field.meta > textarea {
+  min-height: 3em;
+}

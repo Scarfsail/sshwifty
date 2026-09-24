@@ -36,11 +36,13 @@ type Configuration struct {
 	Hooks                        Hooks
 	HookTimeout                  time.Duration
 	Servers                      []Server
-	Presets                      []Preset
+	Presets                      *PresetStore
 	OnlyAllowPresetRemotes       bool
+	AllowPresetEditing           bool
 	BypassClipboardWriteApproval bool
 	SkipPresetPromptWhenAllSet   bool
 	EnabledProtocols             []string
+	SourceFile                   string // Absolute path, empty if not a file
 }
 
 // Verify verifies current setting
@@ -50,6 +52,9 @@ func (c Configuration) Verify() error {
 	}
 	if len(c.Servers) <= 0 {
 		return errors.New("must specify at least one server")
+	}
+	if c.AllowPresetEditing && len(c.SharedKey) <= 0 {
+		return errors.New("AllowPresetEditing requires SharedKey")
 	}
 	for i, c := range c.Servers {
 		if vErr := c.verify(); vErr == nil {
@@ -68,16 +73,15 @@ func (c Configuration) Dialer() network.Dial {
 		d = network.BuildSocks5Dial(c.Socks5, c.Socks5User, c.Socks5Password, d)
 	}
 	if c.OnlyAllowPresetRemotes {
-		accessList := make(network.AllowedHosts, len(c.Presets))
-		for _, k := range c.Presets {
-			if len(k.Host) <= 0 {
-				continue
-			}
-			accessList[k.Host] = struct{}{}
-		}
-		d = network.AccessControlDial(accessList, d)
+		d = network.AccessControlDial(c.Presets, d)
 	}
 	return d
+}
+
+// PresetEditingEnabled returns whether Presets can be edited from the web UI.
+// Editing needs a configuration file to write the changes to
+func (c Configuration) PresetEditingEnabled() bool {
+	return c.AllowPresetEditing && len(c.SourceFile) > 0
 }
 
 // hookSettings returns Hooks settings
@@ -98,6 +102,7 @@ func (c Configuration) Common() Common {
 		Presets:                      c.Presets,
 		Hooks:                        c.hookSettings(),
 		OnlyAllowPresetRemotes:       c.OnlyAllowPresetRemotes,
+		AllowPresetEditing:           c.PresetEditingEnabled(),
 		BypassClipboardWriteApproval: c.BypassClipboardWriteApproval,
 		SkipPresetPromptWhenAllSet:   c.SkipPresetPromptWhenAllSet,
 	}
