@@ -107,6 +107,18 @@ func TestPresetsWithoutSharedKey(t *testing.T) {
 	}
 }
 
+func TestPresetsPutTooLarge(t *testing.T) {
+	p := testPresetsCtl(t, true)
+	body := `{"revision": "` + strings.Repeat("x", presetsMaxBodySize) + `"}`
+	_, err := testPresetsRequest(p, "PUT", "", body)
+	if testPresetsErrorCode(err) != http.StatusRequestEntityTooLarge {
+		t.Errorf("Expecting 413, got %v", err)
+	}
+	if raw, _ := p.verify.commonCfg.Presets.Raw(); len(raw) != 1 {
+		t.Errorf("Expecting the presets to be left unchanged, got %v", raw)
+	}
+}
+
 func TestPresetsGetAndPut(t *testing.T) {
 	p := testPresetsCtl(t, true)
 	rec, err := testPresetsRequest(p, "GET", "", "")

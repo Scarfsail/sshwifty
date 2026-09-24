@@ -33,7 +33,13 @@ var (
 
 	ErrPresetsRevisionConflict = NewError(
 		http.StatusConflict, "Presets have been changed elsewhere")
+
+	ErrPresetsTooLarge = NewError(
+		http.StatusRequestEntityTooLarge, "Presets are too large")
 )
+
+// Plenty for hundreds of presets with private keys
+const presetsMaxBodySize = 1 << 20
 
 // presets reads and replaces the presets for the web UI
 type presets struct {
@@ -89,7 +95,11 @@ func (p presets) Put(w *ResponseWriter, r *http.Request, l log.Logger) error {
 		return err
 	}
 	data := presetsData{}
-	if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
+	body := http.MaxBytesReader(w, r.Body, presetsMaxBodySize)
+	if err := json.NewDecoder(body).Decode(&data); err != nil {
+		if tooLarge := (*http.MaxBytesError)(nil); errors.As(err, &tooLarge) {
+			return ErrPresetsTooLarge
+		}
 		return p.badRequest(w, err)
 	}
 	err := p.verify.commonCfg.Presets.Replace(data.Presets, data.Revision)

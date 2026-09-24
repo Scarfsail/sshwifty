@@ -463,6 +463,9 @@ function startApp(rootEl) {
           case 400:
             return { error: h.responseText };
 
+          case 413:
+            return { error: "The presets are too large to be saved" };
+
           default:
             return { error: "Unexpected backend status: " + h.status };
         }
