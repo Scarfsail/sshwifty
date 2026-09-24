@@ -306,3 +306,24 @@ func TestDirectLoaderWithoutPresets(t *testing.T) {
 		t.Errorf("Expecting an empty preset store, got %v", cfg.Presets)
 	}
 }
+
+func TestPresetStoreReplaceKeepsUnchangedPreset(t *testing.T) {
+	s, _ := testPresetStore(t)
+	raw, revision := s.Raw()
+	// The file:// reference can't be read any more
+	if err := os.Remove(strings.TrimPrefix(
+		string(raw[0].Meta["Private Key"]), "file://")); err != nil {
+		t.Fatal(err)
+	}
+	raw = append(raw, PresetInput{Title: "New", Type: "SSH", Host: "new:22"})
+	if err := s.Replace(raw, revision); err != nil {
+		t.Fatalf("Expecting no error, got %s", err)
+	}
+	presets := s.Presets()
+	if len(presets) != 2 || presets[0].Meta["Private Key"] != "SECRET" {
+		t.Errorf("Expecting the unchanged preset to be kept, got %v", presets)
+	}
+	if !s.Allowed("server:22") || !s.Allowed("new:22") {
+		t.Error("Expecting both hosts to be allowed")
+	}
+}

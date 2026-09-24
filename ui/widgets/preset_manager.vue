@@ -331,8 +331,9 @@ export default {
 
       this.form = null;
 
-      // Opened to save one remote as a preset, which is done now
-      if (this.draft) {
+      // Opened to save one remote as a preset, which is done now. Stay open
+      // if there is something to tell
+      if (this.draft && !this.error) {
         this.$emit("close");
       }
     },
@@ -369,6 +370,13 @@ export default {
 
         this.revision = r.data.revision;
         this.list = r.data.presets || [];
+
+        if (r.refreshError) {
+          this.error =
+            "Saved, but the presets shown could not be updated (" +
+            r.refreshError +
+            "). Please reload the page to see the change.";
+        }
 
         return true;
       } catch (e) {

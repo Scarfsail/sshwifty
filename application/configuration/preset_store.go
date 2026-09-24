@@ -54,6 +54,7 @@ type PresetStore struct {
 	lock        sync.RWMutex
 	raw         PresetInputs
 	presets     []Preset
+	active      map[string]Preset // presets by presetKey of their raw input
 	revision    string
 	reconfigure PresetsReconfigurer
 	sourceFile  string
@@ -86,16 +87,28 @@ func newPresetStore(raw PresetInputs, sourceFile string) (*PresetStore, error) {
 }
 
 // Reconfigure runs the presets through r, and keeps r to validate later
-// replacements. It returns how many presets r has dropped
+// replacements. It returns how many presets r has dropped. It is called once,
+// on start up
 func (s *PresetStore) Reconfigure(r PresetsReconfigurer) (int, error) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
-	presets, err := r(s.presets)
-	if err != nil {
-		return 0, err
+	presets := make([]Preset, 0, len(s.presets))
+	active := make(map[string]Preset, len(s.presets))
+	// One at a time, to know which of the raw presets each result belongs to
+	for i := range s.presets {
+		ps, err := r(s.presets[i : i+1])
+		if err != nil {
+			return 0, err
+		}
+		if len(ps) != 1 {
+			continue
+		}
+		presets = append(presets, ps[0])
+		active[presetKey(s.raw[i])] = ps[0]
 	}
 	ignored := len(s.presets) - len(presets)
 	s.presets = presets
+	s.active = active
 	s.reconfigure = r
 	return ignored, nil
 }
@@ -137,16 +150,26 @@ func (s *PresetStore) Replace(raw PresetInputs, revision string) error {
 	}
 	existing, references := s.known()
 	presets := make([]Preset, 0, len(raw))
+	active := make(map[string]Preset, len(raw))
 	for i, p := range raw {
-		pp, err := s.check(p, references)
-		if err != nil && existing[presetKey(p)] {
-			// Kept as it was, and ignored just like on start up
+		key := presetKey(p)
+		// An unchanged preset keeps its current state, without reading its
+		// file:// or environment:// values again
+		if pp, ok := s.active[key]; ok {
+			presets = append(presets, pp)
+			active[key] = pp
 			continue
-		} else if err != nil {
+		} else if existing[key] {
+			// Ignored on start up, and kept that way
+			continue
+		}
+		pp, err := s.check(p, references)
+		if err != nil {
 			return fmt.Errorf("%w %d (titled %q): %s",
 				ErrPresetInvalid, i+1, p.Title, err)
 		}
 		presets = append(presets, pp)
+		active[key] = pp
 	}
 	newRevision, err := presetRevision(raw)
 	if err != nil {
@@ -157,6 +180,7 @@ func (s *PresetStore) Replace(raw PresetInputs, revision string) error {
 	}
 	s.raw = raw
 	s.presets = presets
+	s.active = active
 	s.revision = newRevision
 	return nil
 }

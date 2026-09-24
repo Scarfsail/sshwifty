@@ -441,7 +441,9 @@ function startApp(rootEl) {
         return JSON.parse(h.responseText);
       },
       // savePresets replaces all presets. It resolves to the new presets and
-      // revision on success, and to the reason (conflict or error) otherwise
+      // revision on success, along with why the preset list could not be
+      // refreshed if it could not, and to the reason (conflict or error)
+      // otherwise
       async savePresets(revision, presets) {
         const headers = await this.authHeaders(this.passphrase);
 
@@ -471,23 +473,39 @@ function startApp(rootEl) {
         }
 
         // Reload through the verify interface, the one place presets are
-        // parsed from. The save is done already, so a failed reload must not
-        // report it as failed
-        try {
-          const result = await this.doAuth(this.passphrase);
+        // parsed from. The save is done already, so a failed reload is
+        // retried once, then reported without failing the save
+        let refreshError = "";
 
-          if (result.result === 200) {
-            const authData = JSON.parse(result.data);
+        for (let i = 0; i < 2; i++) {
+          try {
+            await this.refreshPresets();
 
-            this.presetData.presets = new Presets(
-              authData.presets ? authData.presets : [],
-            );
+            refreshError = "";
+
+            break;
+          } catch (e) {
+            refreshError = "" + e;
           }
-        } catch (e) {
-          // Shown after the next reload
         }
 
-        return { data: JSON.parse(h.responseText) };
+        return {
+          data: JSON.parse(h.responseText),
+          refreshError: refreshError,
+        };
+      },
+      async refreshPresets() {
+        const result = await this.doAuth(this.passphrase);
+
+        if (result.result !== 200) {
+          throw new Error("Unexpected backend status: " + result.result);
+        }
+
+        const authData = JSON.parse(result.data);
+
+        this.presetData.presets = new Presets(
+          authData.presets ? authData.presets : [],
+        );
       },
       updateTabTitleInfo(tabs, updated) {
         if (tabs.length <= 0) {
