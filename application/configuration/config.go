@@ -53,9 +53,6 @@ func (c Configuration) Verify() error {
 	if len(c.Servers) <= 0 {
 		return errors.New("must specify at least one server")
 	}
-	if c.AllowPresetEditing && len(c.SharedKey) <= 0 {
-		return errors.New("AllowPresetEditing requires SharedKey")
-	}
 	for i, c := range c.Servers {
 		if vErr := c.verify(); vErr == nil {
 			continue

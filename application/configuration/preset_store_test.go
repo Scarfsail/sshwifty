@@ -177,17 +177,6 @@ func TestPresetStoreAllowed(t *testing.T) {
 	}
 }
 
-func TestConfigurationVerifyPresetEditingRequiresSharedKey(t *testing.T) {
-	c := Configuration{
-		Servers:            []Server{{ListenPort: 8182}},
-		AllowPresetEditing: true,
-	}
-	err := c.Verify()
-	if err == nil || !strings.Contains(err.Error(), "requires SharedKey") {
-		t.Errorf("Expecting a SharedKey error, got %v", err)
-	}
-}
-
 func TestPresetStoreReplaceNewReference(t *testing.T) {
 	s, cfgFile := testPresetStore(t)
 	raw, revision := s.Raw()

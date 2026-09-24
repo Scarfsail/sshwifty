@@ -97,6 +97,16 @@ func TestPresetsBadKey(t *testing.T) {
 	}
 }
 
+func TestPresetsWithoutSharedKey(t *testing.T) {
+	p := testPresetsCtl(t, true)
+	// Sshwifty is then open to anyone who can reach it, the UI sends the key
+	// derived from the default one
+	p.verify.commonCfg.SharedKey = ""
+	if _, err := testPresetsRequest(p, "GET", "", ""); err != nil {
+		t.Errorf("Expecting no error, got %s", err)
+	}
+}
+
 func TestPresetsGetAndPut(t *testing.T) {
 	p := testPresetsCtl(t, true)
 	rec, err := testPresetsRequest(p, "GET", "", "")

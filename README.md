@@ -408,10 +408,11 @@ Here is all the options of the configuration file:
   // Changes take effect right away and are written back to this config
   // file, which reformats it and sorts its keys. Defaults to false.
   //
-  // Requires SharedKey, Sshwifty refuses to start without one. Presets
-  // saved from the UI are sent to every authenticated user, secrets in Meta
-  // included. Anyone with the SharedKey can add a preset, so with
-  // OnlyAllowPresetRemotes they can also allow themselves a new remote.
+  // Anyone who can use Sshwifty can edit the Presets, so set SharedKey, or
+  // only enable this behind an authenticating reverse proxy. Presets saved
+  // from the UI are sent to every user, secrets in Meta included. Anyone who
+  // can edit the Presets can add one, so with OnlyAllowPresetRemotes they
+  // can also allow themselves a new remote.
   //
   // Meta values that start with "file://" or "environment://" can be kept
   // and moved between presets from the UI, but new ones can only be
