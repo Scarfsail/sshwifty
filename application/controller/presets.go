@@ -53,9 +53,17 @@ type presetsData struct {
 	Presets  configuration.PresetInputs `json:"presets"`
 }
 
+func (p presets) accessAllowedMethods() string {
+	return "GET, PUT"
+}
+
+func (p presets) accessAllowedHeaders() string {
+	return "X-Key, Content-Type"
+}
+
 func (p presets) auth(w *ResponseWriter, r *http.Request) error {
 	hd := w.Header()
-	hd.Add("Cache-Control", "no-store")
+	hd.Set("Cache-Control", "no-store")
 	hd.Add("Pragma", "no-store")
 	if !p.verify.commonCfg.AllowPresetEditing {
 		return ErrPresetsEditingDisabled

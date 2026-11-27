@@ -96,6 +96,14 @@ func newSocketCtl(
 	}
 }
 
+func (s socket) accessAllowedMethods() string {
+	return "GET, OPTION"
+}
+
+func (s socket) accessAllowedHeaders() string {
+	return "X-Key"
+}
+
 type websocketWriter struct {
 	*websocket.Conn
 }
@@ -143,25 +151,21 @@ func buildWebsocketUpgrader(cfg configuration.Server) websocket.Upgrader {
 
 func (s socket) Options(
 	w *ResponseWriter, r *http.Request, l log.Logger) error {
-	w.Header().Add("Access-Control-Allow-Origin", "*")
-	w.Header().Add("Access-Control-Allow-Headers", "X-Key")
 	return nil
 }
 
 func (s socket) buildWSFetcher(c *websocket.Conn) rw.FetchReaderFetcher {
 	return func() ([]byte, error) {
-		for {
-			mt, message, err := c.ReadMessage()
-			if err != nil {
-				return nil, err
-			}
-			if mt != websocket.BinaryMessage {
-				return nil, NewError(
-					http.StatusBadRequest,
-					fmt.Sprintf("Received unknown type of data: %d", message))
-			}
-			return message, nil
+		mt, message, err := c.ReadMessage()
+		if err != nil {
+			return nil, err
 		}
+		if mt != websocket.BinaryMessage {
+			return nil, NewError(
+				http.StatusBadRequest,
+				fmt.Sprintf("Received unknown type of data: %d", message))
+		}
+		return message, nil
 	}
 }
 
@@ -250,6 +254,15 @@ func (s socket) keepAlive(c *websocket.Conn, done <-chan struct{}) {
 	}
 }
 
+const (
+	cipherReadBufSize = 4096
+
+	// https://www.rfc-editor.org/info/rfc6455/#section-5.2, that is
+	// 1 + (1+1+1) + 4 + 1 + (7+64) + 32 bits, or 14 bytes long header, x2 to
+	// make sure the value is safe enough
+	websocketHeaderSafeRedundantSize = 32
+)
+
 func (s socket) Get(
 	w *ResponseWriter, r *http.Request, l log.Logger) error {
 	// Error will not be returned when Websocket already handled
@@ -260,6 +273,8 @@ func (s socket) Get(
 	}
 	defer c.Close()
 	defer w.disable()
+
+	c.SetReadLimit(websocketHeaderSafeRedundantSize + cipherReadBufSize)
 
 	// Keep the connection alive with server-sent Ping frames. The client's
 	// network stack replies to them without involving the page script, so the
@@ -310,8 +325,6 @@ func (s socket) Get(
 	}
 
 	// Start service
-	const cipherReadBufSize = 4096
-
 	cipherReadBuf := [cipherReadBufSize]byte{}
 	cipherWriteBuf := [cipherReadBufSize]byte{}
 	maxWriteLen := int(cipherReadBufSize) - (writeCipher.Overhead() + 2)
@@ -319,8 +332,11 @@ func (s socket) Get(
 	senderLock := sync.Mutex{}
 	cmdExec, cmdExecErr := s.commander.New(
 		command.Configuration{
-			Dial:        s.commonCfg.Dialer,
-			DialTimeout: s.commonCfg.DecideDialTimeout(s.serverCfg.ReadTimeout),
+			Dial: s.commonCfg.Dialer,
+			DialTimeout: s.commonCfg.DecideDialTimeout(
+				s.serverCfg.ReadTimeout,
+			),
+			SSHPinnedHosts: s.commonCfg.PinnedSSHFingerprints,
 		},
 		rw.NewFetchReader(func() ([]byte, error) {
 			defer s.increaseNonce(readNonce[:])

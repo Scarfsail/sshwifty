@@ -43,6 +43,7 @@ const (
 type handler struct {
 	hostNameChecker string
 	commonCfg       configuration.Common
+	originVerifier  originVerifier
 	logger          log.Logger
 	homeCtl         home
 	socketCtl       socket
@@ -76,14 +77,15 @@ func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		if err == nil {
 			clientLogger.Info(
-				"Request completed: %q (%s)",
+				"Request completed: %s %q (%s)",
+				r.Method,
 				r.URL.String(),
 				time.Since(startTime),
 			)
 			return
 		}
-		clientLogger.Warning("Request ended with error: %q: %s (%s)",
-			r.URL.String(), err, time.Since(startTime))
+		clientLogger.Warning("Request ended with error: %s %q: %s (%s)",
+			r.Method, r.URL.String(), err, time.Since(startTime))
 		if controllerErr, isControllerErr := err.(Error); isControllerErr {
 			serveFailure(controllerErr, &ctlResponder, r, h.logger)
 			return
@@ -100,11 +102,29 @@ func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case "/":
 		err = serveController(h.homeCtl, &ctlResponder, r, clientLogger)
 	case "/sshwifty/socket":
-		err = serveController(h.socketCtl, &ctlResponder, r, clientLogger)
+		err = serveInternalDataInterface(
+			h.socketCtl,
+			&ctlResponder,
+			r,
+			clientLogger,
+			h.originVerifier,
+		)
 	case "/sshwifty/socket/verify":
-		err = serveController(h.socketVerifyCtl, &ctlResponder, r, clientLogger)
+		err = serveInternalDataInterface(
+			h.socketVerifyCtl,
+			&ctlResponder,
+			r,
+			clientLogger,
+			h.originVerifier,
+		)
 	case "/sshwifty/presets":
-		err = serveController(h.presetsCtl, &ctlResponder, r, clientLogger)
+		err = serveInternalDataInterface(
+			h.presetsCtl,
+			&ctlResponder,
+			r,
+			clientLogger,
+			h.originVerifier,
+		)
 	case "/robots.txt":
 		err = serveStaticCacheData(
 			"robots.txt",
@@ -161,11 +181,13 @@ func Builder(cmds command.Commands) server.HandlerBuilder {
 		logger log.Logger,
 	) http.Handler {
 		hooks := command.NewHooks(commonCfg.Hooks)
+		originVerifier := newOriginVerifier(cfg.AllowedOriginList())
 		socketCtl := newSocketCtl(commonCfg, cfg, cmds, hooks, &socketBuffers)
 		socketVerifyCtl := newSocketVerification(socketCtl, cfg, commonCfg, cmds)
 		return handler{
 			hostNameChecker: commonCfg.HostName + ":",
 			commonCfg:       commonCfg,
+			originVerifier:  originVerifier,
 			logger:          logger,
 			homeCtl:         home{},
 			socketCtl:       socketCtl,
