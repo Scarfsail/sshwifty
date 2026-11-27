@@ -102,11 +102,15 @@ func newSocketVerification(
 	return socketVerification{
 		socket: s,
 		heartbeat: strconv.FormatFloat(
-			srvCfg.HeartbeatTimeout.Seconds(), 'g', 2, 64),
+			srvCfg.HeartbeatTimeout.Seconds(), 'f', 0, 64),
 		timeout: strconv.FormatFloat(
-			srvCfg.ReadTimeout.Seconds(), 'g', 2, 64),
+			srvCfg.ReadTimeout.Seconds(), 'f', 0, 64),
 		protocols: cmds.Names(),
 	}
+}
+
+func (s socketVerification) accessAllowedMethods() string {
+	return "GET"
 }
 
 func (s socketVerification) authKey(r *http.Request) []byte {
@@ -145,7 +149,7 @@ func (s socketVerification) setServerConfigRespond(
 func (s socketVerification) Get(
 	w *ResponseWriter, r *http.Request, l log.Logger) error {
 	hd := w.Header()
-	hd.Add("Cache-Control", "no-store")
+	hd.Set("Cache-Control", "no-store")
 	hd.Add("Pragma", "no-store")
 	if len(r.Header.Get("X-Key")) <= 0 {
 		hd.Add("X-Key", base64.StdEncoding.EncodeToString(s.mixerKey(r)))

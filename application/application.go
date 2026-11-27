@@ -114,6 +114,8 @@ func (a Application) run(
 		return false, err
 	}
 
+	c.Presets.SetVerifier(c.PresetVerifier())
+
 	if c.AllowPresetEditing && !c.PresetEditingEnabled() {
 		a.logger.Warning("AllowPresetEditing is ignored because the " +
 			"configuration was not loaded from a file")

@@ -47,6 +47,9 @@ var (
 // PresetsReconfigurer lets the commands alter and filter the presets
 type PresetsReconfigurer func(p []Preset) ([]Preset, error)
 
+// PresetVerifier checks a preset that the commands have accepted
+type PresetVerifier func(p Preset) error
+
 // PresetStore holds the presets while the application runs. Presets can be
 // replaced at runtime, the replacement is written back to the configuration
 // file
@@ -57,6 +60,7 @@ type PresetStore struct {
 	active      map[string]Preset // presets by presetKey of their raw input
 	revision    string
 	reconfigure PresetsReconfigurer
+	verify      PresetVerifier
 	sourceFile  string
 }
 
@@ -111,6 +115,15 @@ func (s *PresetStore) Reconfigure(r PresetsReconfigurer) (int, error) {
 	s.active = active
 	s.reconfigure = r
 	return ignored, nil
+}
+
+// SetVerifier sets v to check the replacement presets, with the same rules the
+// presets in the configuration file are checked with on start up, so a save
+// never writes a preset that would stop the next start up
+func (s *PresetStore) SetVerifier(v PresetVerifier) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	s.verify = v
 }
 
 // Presets returns the current presets
@@ -239,6 +252,11 @@ func (s *PresetStore) check(
 	if len(ps) != 1 {
 		return Preset{}, fmt.Errorf(
 			"Type %q is unknown or not enabled", p.Type)
+	}
+	if s.verify != nil {
+		if err := s.verify(ps[0]); err != nil {
+			return Preset{}, err
+		}
 	}
 	return ps[0], nil
 }

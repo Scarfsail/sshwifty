@@ -234,6 +234,25 @@ Here is all the options of the configuration file:
   // exceeded, the hook will be terminated, and thus cause a failure
   "HookTimeout": 30,
 
+  // The pinned SSH Host fingerprints. If a remote is defined on this list, the
+  // Sshwifty backend will check it's host fingerprint on the server side, and 
+  // reject the connection if the fingerprint don't match
+  //
+  // Format: "hostaddress1,hostaddress2" : "HASH:FingerprintBase64"
+  //
+  // You can define multiple host address at the same time, this allows you to
+  // for example setup the DNS name and IP address in one line more conveniently
+  // but it does NOT support CIDR range
+  //
+  // This setting all by itself is not a security setting, as user could get
+  // around this restriction by typing in an alternative host name. If security
+  // is a concern, use this in combination with `Presets` and
+  // `OnlyAllowPresetRemotes`
+  "PinnedSSHFingerprints": {
+    "router,192.168.0.1": "SHA256:NAo=",
+    "server:2222": "SHA256:NAo="
+  },
+
   // Sshwifty HTTP server, you can set multiple ones to serve on different
   // ports
   "Servers": [
@@ -279,6 +298,9 @@ Here is all the options of the configuration file:
       // Forced delay between each write
       // (In Milliseconds)
       "WriteDelay": 10,
+
+      // List of allowed Origins, separated by ","
+      "AllowedOrigins": "http://invalidhost.localhost,https://invalidhost.localhost,https://anotherinvalidhost.localhost",
 
       // Path to TLS certificate file. Set empty to use HTTP
       "TLSCertificateFile": "",
@@ -494,6 +516,7 @@ SSHWIFTY_SOCKS5_USER
 SSHWIFTY_SOCKS5_PASSWORD
 SSHWIFTY_HOOK_BEFORE_CONNECTING
 SSHWIFTY_HOOKTIMEOUT
+SSHWIFTY_PINNEDSSHHOSTFINGERPRINTS
 SSHWIFTY_LISTENPORT
 SSHWIFTY_INITIALTIMEOUT
 SSHWIFTY_READTIMEOUT
@@ -503,6 +526,7 @@ SSHWIFTY_PINGINTERVAL
 SSHWIFTY_READDELAY
 SSHWIFTY_WRITEELAY
 SSHWIFTY_LISTENINTERFACE
+SSHWIFTY_ALLOWEDORIGINS
 SSHWIFTY_TLSCERTIFICATEFILE
 SSHWIFTY_TLSCERTIFICATEKEYFILE
 SSHWIFTY_SERVERMESSAGE
@@ -528,6 +552,10 @@ is to use `jq`:
 Which should give you one line of escaped JSON string, safe for use in scripts.
 
 [`preset.example.json`]: preset.example.json
+
+Same goes for `SSHWIFTY_PINNEDSSHHOSTFINGERPRINTS` which also expects JSON 
+encoded data in the same format demonstrated in the `sshwifty.conf.example.json`
+file, and can be loaded in the same way as how `SSHWIFTY_PRESETS` is loaded.
 
 Notice: When you're using environment variables to configure Sshwifty, only one
 Sshwifty HTTP server is then allowed. There is no way to setup multiple servers
@@ -614,6 +642,11 @@ computer console.
   formatting fixes
 - Thanks to [Scarfsai](https://github.com/Scarfsai) for enabling supports to
   `xterm-256color` and `@xterm/addon-clipboard`
+- Thanks to Nelson Trindade Silva [www.paos.pt](https://www.paos.pt) for
+  conducting detailed security review and suggestions for Sshwifty, multiple
+  critical bugs are discovered by him in the process. These bugs are addressed
+  in commit e0846a7b1a, 4569345861, e569e58e6c and 984d0193b1 following his
+  discovery.
 
 ## License
 

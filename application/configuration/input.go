@@ -34,6 +34,7 @@ type serverInput struct {
 	PingInterval          int    // Server Websocket ping interval, in second
 	ReadDelay             int    // Read delay, in millisecond
 	WriteDelay            int    // Write delay, in millisecond
+	AllowedOrigins        string // "," separated list for origins
 	TLSCertificateFile    string // Location of TLS certificate file
 	TLSCertificateKeyFile string // Location of TLS certificate key
 	ServerMessage         string // Server message displayed on the Home page
@@ -51,6 +52,7 @@ func (f *serverInput) concretize() Server {
 		PingInterval:          time.Duration(f.PingInterval) * time.Second,
 		ReadDelay:             time.Duration(f.ReadDelay) * time.Millisecond,
 		WriteDelay:            time.Duration(f.WriteDelay) * time.Millisecond,
+		AllowedOrigins:        f.AllowedOrigins,
 		TLSCertificateFile:    f.TLSCertificateFile,
 		TLSCertificateKeyFile: f.TLSCertificateKeyFile,
 		ServerMessage:         f.ServerMessage,
@@ -151,6 +153,9 @@ type commonInput struct {
 	// HookTimeout execution timeout
 	HookTimeout int
 
+	// PinnedSSHFingerprints
+	PinnedSSHFingerprints map[string]string
+
 	// Servers
 	Servers serverInputs
 
@@ -212,6 +217,7 @@ func (f commonInput) concretize(sourceFile string) (Configuration, error) {
 			f.HookTimeout,
 			1,
 		)) * time.Second,
+		PinnedSSHFingerprints:        f.PinnedSSHFingerprints,
 		Servers:                      servers,
 		Presets:                      presets,
 		OnlyAllowPresetRemotes:       f.OnlyAllowPresetRemotes,

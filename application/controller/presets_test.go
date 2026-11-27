@@ -154,3 +154,29 @@ func TestPresetsGetAndPut(t *testing.T) {
 		t.Errorf("Expecting 409 for a stale revision, got %v", err)
 	}
 }
+
+func TestPresetsRejectsForeignOrigin(t *testing.T) {
+	p := testPresetsCtl(t, true)
+	for origin, accepted := range map[string]bool{
+		"":                        true,
+		"https://example.com":     true,
+		"https://evil.example":    false,
+		"https://example.com.org": false,
+	} {
+		r := httptest.NewRequest("GET", "/sshwifty/presets", nil)
+		r.Host = "example.com"
+		r.Header.Set("X-Key",
+			base64.StdEncoding.EncodeToString(p.verify.authKey(r)))
+		if origin != "" {
+			r.Header.Set("Origin", origin)
+		}
+		w := newResponseWriter(httptest.NewRecorder())
+		err := serveInternalDataInterface(
+			p, &w, r, log.NewDitch(), newOriginVerifier(nil))
+		if accepted && err != nil {
+			t.Errorf("Origin %q: expecting no error, got %s", origin, err)
+		} else if !accepted && testPresetsErrorCode(err) != http.StatusBadRequest {
+			t.Errorf("Origin %q: expecting 400, got %v", origin, err)
+		}
+	}
+}

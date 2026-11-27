@@ -86,6 +86,11 @@
           icon near the top left corner.
         </p>
 
+        <div v-if="versionWarning.length > 0">
+          <hr />
+          <div id="home-version-message" v-html="versionWarning"></div>
+        </div>
+
         <div v-if="serverMessage.length > 0">
           <hr />
           <p class="secondary" v-html="serverMessage"></p>
@@ -157,6 +162,7 @@ import {
 
 import * as home_socket from "./home_socketctl.js";
 import * as home_history from "./home_historyctl.js";
+import * as historystore from "./commands/history.js";
 
 import * as presets from "./commands/presets.js";
 
@@ -256,6 +262,7 @@ export default {
         lastID: 0,
         tabs: [],
       },
+      versionWarning: "",
     };
   },
   computed: {
@@ -296,6 +303,9 @@ export default {
       this.showConnectWindow();
     }
     window.addEventListener("beforeunload", this.onBrowserClose);
+    this.versionWarning = historystore.generateSecretDataStoreBugWarningMessage(
+      this.connector.historyRec,
+    );
   },
   beforeDestroy() {
     window.removeEventListener("beforeunload", this.onBrowserClose);
